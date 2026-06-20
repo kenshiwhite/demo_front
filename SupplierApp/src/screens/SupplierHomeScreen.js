@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import NotificationsScreen from './NotificationsScreen';
+import RequestDetailScreen from './RequestDetailScreen';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function SupplierHomeScreen() {
@@ -19,6 +20,7 @@ export default function SupplierHomeScreen() {
     const [loading, setLoading] = useState(false);
     const [responseModal, setResponseModal] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
+    const [selectedRequestDetail, setSelectedRequestDetail] = useState(null);
     const [message, setMessage] = useState('');
     const [offeredPrice, setOfferedPrice] = useState('');
     const [productModal, setProductModal] = useState(false);
@@ -45,7 +47,7 @@ export default function SupplierHomeScreen() {
             const response = await client.get('/api/requests/');
             setRequests(response.data.results || response.data);
         } catch (e) {
-            Alert.alert('Error', 'Could not load requests');
+            Alert.alert('Ошибка', 'Не удалось загрузить заявки');
         } finally {
             setLoading(false);
         }
@@ -57,7 +59,7 @@ export default function SupplierHomeScreen() {
             const response = await client.get('/api/catalog/products/');
             setProducts(response.data.results || response.data);
         } catch (e) {
-            Alert.alert('Error', 'Could not load products');
+            Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
         }
@@ -71,7 +73,7 @@ export default function SupplierHomeScreen() {
     const handlePickImage = async () => {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
-            Alert.alert('Permission needed', 'Please allow access to your photo library');
+            Alert.alert('Нет доступа', 'Пожалуйста, разрешите доступ к фото');
             return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,7 +89,7 @@ export default function SupplierHomeScreen() {
 
     const handleSubmitResponse = async () => {
         if (!message) {
-            Alert.alert('Error', 'Please enter a message');
+            Alert.alert('Ошибка', 'Пожалуйста, введите сообщение');
             return;
         }
         try {
@@ -98,20 +100,21 @@ export default function SupplierHomeScreen() {
             setResponseModal(false);
             setMessage('');
             setOfferedPrice('');
-            Alert.alert('Success', 'Response sent to client!');
+            Alert.alert('Успешно', 'Ответ отправлен клиенту!');
             loadRequests();
         } catch (e) {
-            Alert.alert('Error', 'Could not send response');
+            Alert.alert('Ошибка', 'Не удалось отправить ответ');
         }
     };
 
-    const handleUpdateStatus = async (requestId, status) => {
+    const handleUpdateStatus = async (requestId, newStatus) => {
+        const statusText = newStatus === 'fulfilled' ? 'выполнено' : 'отклонено';
         try {
-            await client.patch(`/api/requests/${requestId}/update_status/`, { status });
-            Alert.alert('Success', `Request marked as ${status}`);
+            await client.patch(`/api/requests/${requestId}/update_status/`, { status: newStatus });
+            Alert.alert('Успешно', `Заявка отмечена как ${statusText}`);
             loadRequests();
         } catch (e) {
-            Alert.alert('Error', 'Could not update status');
+            Alert.alert('Ошибка', 'Не удалось обновить статус');
         }
     };
 
@@ -130,20 +133,20 @@ export default function SupplierHomeScreen() {
 
     const handleDeleteProduct = (productId) => {
         Alert.alert(
-            'Delete Product',
-            'Are you sure you want to delete this product?',
+            'Удалить товар',
+            'Вы уверены, что хотите удалить этот товар?',
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: 'Отмена', style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: 'Удалить',
                     style: 'destructive',
                     onPress: async () => {
                         try {
                             await client.delete(`/api/catalog/products/${productId}/`);
-                            Alert.alert('Success', 'Product deleted');
+                            Alert.alert('Успешно', 'Товар удалён');
                             loadProducts();
                         } catch (e) {
-                            Alert.alert('Error', 'Could not delete product');
+                            Alert.alert('Ошибка', 'Не удалось удалить товар');
                         }
                     }
                 }
@@ -153,7 +156,7 @@ export default function SupplierHomeScreen() {
 
     const handleAddProduct = async () => {
         if (!productForm.name || !productForm.price || !productForm.unit) {
-            Alert.alert('Error', 'Please fill in name, price and unit');
+            Alert.alert('Ошибка', 'Заполните название, цену и единицу измерения');
             return;
         }
         try {
@@ -177,12 +180,12 @@ export default function SupplierHomeScreen() {
                 await client.patch(`/api/catalog/products/${editingProduct.id}/`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                Alert.alert('Success', 'Product updated!');
+                Alert.alert('Успешно', 'Товар обновлён!');
             } else {
                 await client.post('/api/catalog/products/', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                Alert.alert('Success', 'Product added!');
+                Alert.alert('Успешно', 'Товар добавлен!');
             }
 
             setProductModal(false);
@@ -194,7 +197,7 @@ export default function SupplierHomeScreen() {
             setEditingProduct(null);
             loadProducts();
         } catch (e) {
-            Alert.alert('Error', 'Could not save product');
+            Alert.alert('Ошибка', 'Не удалось сохранить товар');
         }
     };
 
@@ -205,7 +208,7 @@ export default function SupplierHomeScreen() {
             });
             loadProducts();
         } catch (e) {
-            Alert.alert('Error', 'Could not update product');
+            Alert.alert('Ошибка', 'Не удалось обновить товар');
         }
     };
 
@@ -219,27 +222,55 @@ export default function SupplierHomeScreen() {
         return colors[status] || '#999';
     };
 
+    const getStatusText = (status) => {
+        const texts = {
+            pending: 'Ожидает',
+            accepted: 'Принято',
+            declined: 'Отклонено',
+            fulfilled: 'Выполнено',
+        };
+        return texts[status] || status;
+    };
+
     const renderRequest = ({ item }) => (
-        <View style={styles.card}>
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() => setSelectedRequestDetail(item)}
+        >
             <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{item.product_name}</Text>
                 <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.badgeText}>{item.status}</Text>
+                    <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
                 </View>
             </View>
-            <Text style={styles.cardSubtitle}>From: {item.client_name}</Text>
-            <Text style={styles.cardSubtitle}>Quantity: {item.quantity}</Text>
+            <Text style={styles.cardSubtitle}>От: {item.client_name}</Text>
+            <Text style={styles.cardSubtitle}>Количество: {item.quantity}</Text>
+            {item.total_price && (
+                <Text style={styles.cardSubtitle}>
+                    Итого: {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
+                </Text>
+            )}
+            {item.delivery_address ? (
+                <Text style={styles.cardSubtitle} numberOfLines={1}>
+                    Адрес: {item.delivery_address}
+                </Text>
+            ) : null}
+            {item.desired_delivery_date ? (
+                <Text style={styles.cardSubtitle}>
+                    Дата доставки: {new Date(item.desired_delivery_date).toLocaleDateString('ru-RU')}
+                </Text>
+            ) : null}
             {item.note ? (
-                <Text style={styles.note}>Note: {item.note}</Text>
+                <Text style={styles.note}>Заметка: {item.note}</Text>
             ) : null}
 
             {item.response && (
                 <View style={styles.responseBox}>
-                    <Text style={styles.responseTitle}>Your response:</Text>
+                    <Text style={styles.responseTitle}>Ваш ответ:</Text>
                     <Text style={styles.responseText}>{item.response.message}</Text>
                     {item.response.offered_price && (
                         <Text style={styles.responseText}>
-                            Offered price: ${item.response.offered_price}
+                            Предложенная цена: {parseInt(item.response.offered_price).toLocaleString('ru-RU')} ₸
                         </Text>
                     )}
                 </View>
@@ -249,15 +280,21 @@ export default function SupplierHomeScreen() {
                 <View style={styles.actions}>
                     <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: '#10B981' }]}
-                        onPress={() => handleRespond(item)}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            handleRespond(item);
+                        }}
                     >
-                        <Text style={styles.actionText}>Respond</Text>
+                        <Text style={styles.actionText}>Ответить</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
-                        onPress={() => handleUpdateStatus(item.id, 'declined')}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(item.id, 'declined');
+                        }}
                     >
-                        <Text style={styles.actionText}>Decline</Text>
+                        <Text style={styles.actionText}>Отклонить</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -265,60 +302,96 @@ export default function SupplierHomeScreen() {
             {item.status === 'accepted' && (
                 <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: '#6366F1', marginTop: 8 }]}
-                    onPress={() => handleUpdateStatus(item.id, 'fulfilled')}
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(item.id, 'fulfilled');
+                    }}
                 >
-                    <Text style={styles.actionText}>Mark as Fulfilled</Text>
+                    <Text style={styles.actionText}>Отметить как выполнено</Text>
                 </TouchableOpacity>
             )}
-        </View>
+            <Text style={styles.tapHint}>Нажмите для подробностей →</Text>
+        </TouchableOpacity>
     );
 
-    const renderProduct = ({ item }) => (
-        <View style={styles.card}>
-            {item.image ? (
-                <Image
-                    source={{ uri: item.image }}
-                    style={styles.productImage}
-                    resizeMode="cover"
-                />
-            ) : (
-                <View style={styles.productImagePlaceholder}>
-                    <Text style={styles.placeholderText}>No image</Text>
+    const renderProduct = ({ item }) => {
+        const isLowStock = item.stock_quantity <= 10;
+        const isOutOfStock = item.stock_quantity === 0;
+
+        return (
+            <View style={styles.card}>
+                {item.image ? (
+                    <Image
+                        source={{ uri: item.image }}
+                        style={styles.productImage}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    <View style={styles.productImagePlaceholder}>
+                        <Text style={styles.placeholderText}>Нет фото</Text>
+                    </View>
+                )}
+                <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{item.name}</Text>
+                    <TouchableOpacity
+                        style={[
+                            styles.badge,
+                            { backgroundColor: item.is_available ? '#10B981' : '#EF4444' }
+                        ]}
+                        onPress={() => handleToggleAvailability(item)}
+                    >
+                        <Text style={styles.badgeText}>
+                            {item.is_available ? 'В наличии' : 'Нет в наличии'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
-            )}
-            <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <TouchableOpacity
-                    style={[
-                        styles.badge,
-                        { backgroundColor: item.is_available ? '#10B981' : '#EF4444' }
-                    ]}
-                    onPress={() => handleToggleAvailability(item)}
-                >
-                    <Text style={styles.badgeText}>
-                        {item.is_available ? 'Available' : 'Unavailable'}
+                <Text style={styles.cardSubtitle}>{item.description}</Text>
+                <Text style={styles.price}>
+                    {parseInt(item.price).toLocaleString('ru-RU')} ₸ / {item.unit}
+                </Text>
+
+                <View style={styles.stockRow}>
+                    <Text style={styles.stockLabel}>Остаток на складе:</Text>
+                    <Text style={[
+                        styles.stockValue,
+                        isOutOfStock && styles.stockOut,
+                        isLowStock && !isOutOfStock && styles.stockLow,
+                        !isLowStock && styles.stockOk,
+                    ]}>
+                        {item.stock_quantity} {item.unit}
                     </Text>
-                </TouchableOpacity>
+                </View>
+
+                {isOutOfStock && (
+                    <View style={styles.stockWarning}>
+                        <Text style={styles.stockWarningText}>⚠️ Товар закончился</Text>
+                    </View>
+                )}
+                {isLowStock && !isOutOfStock && (
+                    <View style={[styles.stockWarning, { backgroundColor: '#FFF8E7' }]}>
+                        <Text style={[styles.stockWarningText, { color: '#F59E0B' }]}>
+                            ⚠️ Мало товара на складе
+                        </Text>
+                    </View>
+                )}
+
+                <View style={styles.actions}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#4F46E5' }]}
+                        onPress={() => handleEditProduct(item)}
+                    >
+                        <Text style={styles.actionText}>Изменить</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+                        onPress={() => handleDeleteProduct(item.id)}
+                    >
+                        <Text style={styles.actionText}>Удалить</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <Text style={styles.cardSubtitle}>{item.description}</Text>
-            <Text style={styles.price}>{item.price} тенге / {item.unit}</Text>
-            <Text style={styles.cardSubtitle}>Stock: {item.stock_quantity}</Text>
-            <View style={styles.actions}>
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#4F46E5' }]}
-                    onPress={() => handleEditProduct(item)}
-                >
-                    <Text style={styles.actionText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
-                    onPress={() => handleDeleteProduct(item.id)}
-                >
-                    <Text style={styles.actionText}>Delete</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -331,7 +404,7 @@ export default function SupplierHomeScreen() {
                         <Text style={styles.logout}>🔔</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={signOut}>
-                        <Text style={styles.logout}>Logout</Text>
+                        <Text style={styles.logout}>Выйти</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -342,7 +415,7 @@ export default function SupplierHomeScreen() {
                     onPress={() => setView('requests')}
                 >
                     <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>
-                        Requests
+                        Заявки
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -350,7 +423,7 @@ export default function SupplierHomeScreen() {
                     onPress={() => setView('products')}
                 >
                     <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>
-                        My Products
+                        Мои товары
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -365,7 +438,7 @@ export default function SupplierHomeScreen() {
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <Text style={styles.empty}>
-                            {view === 'requests' ? 'No requests yet' : 'No products yet'}
+                            {view === 'requests' ? 'Заявок пока нет' : 'Товаров пока нет'}
                         </Text>
                     }
                 />
@@ -384,57 +457,65 @@ export default function SupplierHomeScreen() {
                         setProductModal(true);
                     }}
                 >
-                    <Text style={styles.fabText}>+ Add Product</Text>
+                    <Text style={styles.fabText}>+ Добавить товар</Text>
                 </TouchableOpacity>
             )}
 
             {/* Response Modal */}
-        <Modal visible={responseModal} transparent animationType="slide">
-            <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                <View style={styles.modalOverlay}>
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    >
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Respond to request</Text>
-                            <Text style={styles.modalSubtitle}>
-                                {selectedRequest?.product_name} — qty: {selectedRequest?.quantity}
-                            </Text>
-                            <TextInput
-                                style={[styles.input, styles.textArea]}
-                                placeholder="Your message to the client"
-                                value={message}
-                                onChangeText={setMessage}
-                                multiline
-                                numberOfLines={3}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Offered price (optional)"
-                                value={offeredPrice}
-                                onChangeText={setOfferedPrice}
-                                keyboardType="numeric"
-                            />
-                            <TouchableOpacity
-                                style={styles.button}
-                                onPress={handleSubmitResponse}
-                            >
-                                <Text style={styles.buttonText}>Send Response</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => {
-                                    Keyboard.dismiss();
-                                    setResponseModal(false);
-                                }}
-                            >
-                                <Text style={styles.cancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </KeyboardAvoidingView>
-                </View>
-            </TouchableWithoutFeedback>
-        </Modal>
+            <Modal visible={responseModal} transparent animationType="slide">
+                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+                    <View style={styles.modalOverlay}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        >
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>Ответить на заявку</Text>
+                                <Text style={styles.modalSubtitle}>
+                                    {selectedRequest?.product_name} — кол-во: {selectedRequest?.quantity}
+                                </Text>
+                                {selectedRequest?.total_price && (
+                                    <View style={styles.totalRow}>
+                                        <Text style={styles.totalLabel}>Сумма заявки:</Text>
+                                        <Text style={styles.totalValue}>
+                                            {parseInt(selectedRequest.total_price).toLocaleString('ru-RU')} ₸
+                                        </Text>
+                                    </View>
+                                )}
+                                <TextInput
+                                    style={[styles.input, styles.textArea]}
+                                    placeholder="Ваше сообщение клиенту"
+                                    value={message}
+                                    onChangeText={setMessage}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Предложить цену (необязательно)"
+                                    value={offeredPrice}
+                                    onChangeText={setOfferedPrice}
+                                    keyboardType="numeric"
+                                />
+                                <TouchableOpacity
+                                    style={styles.button}
+                                    onPress={handleSubmitResponse}
+                                >
+                                    <Text style={styles.buttonText}>Отправить ответ</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        Keyboard.dismiss();
+                                        setResponseModal(false);
+                                    }}
+                                >
+                                    <Text style={styles.cancelText}>Отмена</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </KeyboardAvoidingView>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
 
             {/* Add/Edit Product Modal */}
             <Modal visible={productModal} transparent animationType="slide">
@@ -442,7 +523,7 @@ export default function SupplierHomeScreen() {
                     <ScrollView>
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>
-                                {editingProduct ? 'Edit Product' : 'Add New Product'}
+                                {editingProduct ? 'Редактировать товар' : 'Добавить товар'}
                             </Text>
 
                             <TouchableOpacity
@@ -462,39 +543,39 @@ export default function SupplierHomeScreen() {
                                         resizeMode="cover"
                                     />
                                 ) : (
-                                    <Text style={styles.imagePickerText}>📷 Add Photo</Text>
+                                    <Text style={styles.imagePickerText}>📷 Добавить фото</Text>
                                 )}
                             </TouchableOpacity>
 
                             <TextInput
                                 style={styles.input}
-                                placeholder="Product name *"
+                                placeholder="Название товара *"
                                 value={productForm.name}
                                 onChangeText={(v) => setProductForm(p => ({ ...p, name: v }))}
                             />
                             <TextInput
                                 style={[styles.input, styles.textArea]}
-                                placeholder="Description"
+                                placeholder="Описание"
                                 value={productForm.description}
                                 onChangeText={(v) => setProductForm(p => ({ ...p, description: v }))}
                                 multiline
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Price *"
+                                placeholder="Цена (₸) *"
                                 value={productForm.price}
                                 onChangeText={(v) => setProductForm(p => ({ ...p, price: v }))}
                                 keyboardType="numeric"
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Unit (kg, piece, box) *"
+                                placeholder="Единица (кг, шт, упак) *"
                                 value={productForm.unit}
                                 onChangeText={(v) => setProductForm(p => ({ ...p, unit: v }))}
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Stock quantity"
+                                placeholder="Количество на складе"
                                 value={productForm.stock_quantity}
                                 onChangeText={(v) => setProductForm(p => ({ ...p, stock_quantity: v }))}
                                 keyboardType="numeric"
@@ -504,7 +585,7 @@ export default function SupplierHomeScreen() {
                                 onPress={handleAddProduct}
                             >
                                 <Text style={styles.buttonText}>
-                                    {editingProduct ? 'Save Changes' : 'Add Product'}
+                                    {editingProduct ? 'Сохранить изменения' : 'Добавить товар'}
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -515,12 +596,25 @@ export default function SupplierHomeScreen() {
                                     setEditingProduct(null);
                                 }}
                             >
-                                <Text style={styles.cancelText}>Cancel</Text>
+                                <Text style={styles.cancelText}>Отмена</Text>
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
                 </View>
             </Modal>
+
+            {selectedRequestDetail && (
+                <View style={StyleSheet.absoluteFill}>
+                    <RequestDetailScreen
+                        request={selectedRequestDetail}
+                        onClose={() => setSelectedRequestDetail(null)}
+                        onUpdate={() => {
+                            loadRequests();
+                            setSelectedRequestDetail(null);
+                        }}
+                    />
+                </View>
+            )}
 
             {showNotifications && (
                 <View style={StyleSheet.absoluteFill}>
@@ -601,6 +695,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+    tapHint: {
+        fontSize: 12,
+        color: '#4F46E5',
+        marginTop: 10,
+        textAlign: 'right',
+    },
     fab: {
         position: 'absolute',
         bottom: 24,
@@ -628,6 +728,16 @@ const styles = StyleSheet.create({
     },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
     modalSubtitle: { fontSize: 14, color: '#666', marginBottom: 16 },
+    totalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#f0f4ff',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    totalLabel: { fontSize: 14, color: '#666' },
+    totalValue: { fontSize: 15, fontWeight: '600', color: '#4F46E5' },
     input: {
         borderWidth: 1,
         borderColor: '#ddd',
@@ -662,10 +772,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
-    placeholderText: {
-        color: '#999',
-        fontSize: 14,
-    },
+    placeholderText: { color: '#999', fontSize: 14 },
     imagePicker: {
         width: '100%',
         height: 160,
@@ -683,8 +790,29 @@ const styles = StyleSheet.create({
         height: 160,
         borderRadius: 8,
     },
-    imagePickerText: {
-        color: '#999',
-        fontSize: 16,
+    imagePickerText: { color: '#999', fontSize: 16 },
+    stockRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    stockLabel: { fontSize: 13, color: '#666' },
+    stockValue: { fontSize: 15, fontWeight: '700' },
+    stockOk: { color: '#10B981' },
+    stockLow: { color: '#F59E0B' },
+    stockOut: { color: '#EF4444' },
+    stockWarning: {
+        backgroundColor: '#FEF2F2',
+        borderRadius: 8,
+        padding: 8,
+        marginTop: 6,
+        alignItems: 'center',
+    },
+    stockWarningText: {
+        fontSize: 13,
+        color: '#EF4444',
+        fontWeight: '600',
     },
 });

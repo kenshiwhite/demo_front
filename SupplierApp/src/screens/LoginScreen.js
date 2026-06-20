@@ -15,17 +15,16 @@ export default function LoginScreen({ navigation }) {
 
     const handleLogin = async () => {
         if (!username || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
+            Alert.alert('Ошибка', 'Пожалуйста, заполните все поля');
             return;
         }
         setLoading(true);
         try {
             await login(username, password);
-            // fetch user profile after login
             const response = await client.get('/api/auth/me/');
             await signIn(response.data);
         } catch (error) {
-            Alert.alert('Error', 'Invalid username or password');
+            Alert.alert('Ошибка', 'Неверный логин или пароль');
         } finally {
             setLoading(false);
         }
@@ -33,19 +32,19 @@ export default function LoginScreen({ navigation }) {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
+            <Text style={styles.title}>Добро пожаловать</Text>
+            <Text style={styles.subtitle}>Войдите в свой аккаунт</Text>
 
             <TextInput
                 style={styles.input}
-                placeholder="Username"
+                placeholder="Имя пользователя"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
             />
             <TextInput
                 style={styles.input}
-                placeholder="Password"
+                placeholder="Пароль"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -58,12 +57,12 @@ export default function LoginScreen({ navigation }) {
             >
                 {loading
                     ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.buttonText}>Login</Text>
+                    : <Text style={styles.buttonText}>Войти</Text>
                 }
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.link}>Don't have an account? Register</Text>
+                <Text style={styles.link}>Нет аккаунта? Зарегистрироваться</Text>
             </TouchableOpacity>
         </View>
     );

@@ -3,15 +3,20 @@ import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, TextInput, ActivityIndicator,
     Alert, Modal, Image, KeyboardAvoidingView,
-    Platform, TouchableWithoutFeedback, Keyboard
+    Platform, TouchableWithoutFeedback, Keyboard,
+    ScrollView
 } from 'react-native';
 import { getSuppliers, getProducts, getAllProducts } from '../api/catalog';
-import { createRequest, getMyRequests } from '../api/requests';
+import { getMyRequests } from '../api/requests';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import NotificationsScreen from './NotificationsScreen';
+import RequestDetailScreen from './RequestDetailScreen';
+import CartScreen from './CartScreen';
 
 export default function ClientHomeScreen() {
     const { signOut, user } = useAuth();
+    const { addToCart, getTotalItems } = useCart();
     const [view, setView] = useState('all');
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -19,11 +24,9 @@ export default function ClientHomeScreen() {
     const [selectedSupplier, setSelectedSupplier] = useState(null);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [quantity, setQuantity] = useState('');
-    const [note, setNote] = useState('');
+    const [selectedRequest, setSelectedRequest] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showCart, setShowCart] = useState(false);
 
     useEffect(() => {
         loadAllProducts();
@@ -39,7 +42,7 @@ export default function ClientHomeScreen() {
             const data = await getSuppliers();
             setSuppliers(data.results || data);
         } catch (e) {
-            console.log('Could not load suppliers');
+            console.log('Не удалось загрузить поставщиков');
         }
     };
 
@@ -49,7 +52,7 @@ export default function ClientHomeScreen() {
             const data = await getAllProducts(searchText);
             setProducts(data.results || data);
         } catch (e) {
-            Alert.alert('Error', 'Could not load products');
+            Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
         }
@@ -61,7 +64,7 @@ export default function ClientHomeScreen() {
             const data = await getProducts(supplierId, searchText);
             setProducts(data.results || data);
         } catch (e) {
-            Alert.alert('Error', 'Could not load products');
+            Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
         }
@@ -73,7 +76,7 @@ export default function ClientHomeScreen() {
             const data = await getMyRequests();
             setMyRequests(data.results || data);
         } catch (e) {
-            Alert.alert('Error', 'Could not load requests');
+            Alert.alert('Ошибка', 'Не удалось загрузить заявки');
         } finally {
             setLoading(false);
         }
@@ -95,35 +98,6 @@ export default function ClientHomeScreen() {
         loadSupplierProducts(supplier.id);
     };
 
-    const handleRequestPress = (product) => {
-        setSelectedProduct(product);
-        setModalVisible(true);
-    };
-
-    const handleSubmitRequest = async () => {
-        if (!quantity) {
-            Alert.alert('Error', 'Please enter quantity');
-            return;
-        }
-        const total = (parseFloat(selectedProduct?.price) * parseInt(quantity)).toFixed(2);
-        try {
-            await createRequest({
-                product: selectedProduct.id,
-                quantity: parseInt(quantity),
-                note,
-            });
-            setModalVisible(false);
-            setQuantity('');
-            setNote('');
-            Alert.alert(
-                'Request Sent',
-                `Your request for ${quantity} x ${selectedProduct.name} has been sent.\nTotal: $${total}`
-            );
-        } catch (e) {
-            Alert.alert('Error', 'Could not send request');
-        }
-    };
-
     const getStatusColor = (status) => {
         const colors = {
             pending: '#F59E0B',
@@ -132,6 +106,16 @@ export default function ClientHomeScreen() {
             fulfilled: '#6366F1',
         };
         return colors[status] || '#999';
+    };
+
+    const getStatusText = (status) => {
+        const texts = {
+            pending: 'Ожидает',
+            accepted: 'Принято',
+            declined: 'Отклонено',
+            fulfilled: 'Выполнено',
+        };
+        return texts[status] || status;
     };
 
     const renderSupplier = ({ item }) => (
@@ -149,7 +133,7 @@ export default function ClientHomeScreen() {
                     {item.company_name || item.username}
                 </Text>
                 <Text style={styles.cardSubtitle}>
-                    {item.product_count} products available
+                    {item.product_count} товаров доступно
                 </Text>
             </View>
             <Text style={styles.arrow}>›</Text>
@@ -166,101 +150,105 @@ export default function ClientHomeScreen() {
                 />
             ) : (
                 <View style={styles.productImagePlaceholder}>
-                    <Text style={styles.placeholderText}>No image</Text>
+                    <Text style={styles.placeholderText}>Нет фото</Text>
                 </View>
             )}
             <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.supplierName}>By: {item.supplier_name}</Text>
+                <Text style={styles.supplierName}>От: {item.supplier_name}</Text>
                 <Text style={styles.productDesc} numberOfLines={2}>
                     {item.description}
                 </Text>
                 <Text style={styles.productPrice}>
-                    ${item.price} / {item.unit}
-                </Text>
-                <Text style={styles.productStock}>
-                    Stock: {item.stock_quantity}
+                    {parseInt(item.price).toLocaleString('ru-RU')} ₸ / {item.unit}
                 </Text>
             </View>
             <TouchableOpacity
                 style={styles.requestButton}
-                onPress={() => handleRequestPress(item)}
+                onPress={() => {
+                    addToCart(item);
+                    Alert.alert('Добавлено', `${item.name} добавлен в корзину`);
+                }}
             >
-                <Text style={styles.requestButtonText}>Request</Text>
+                <Text style={styles.requestButtonText}>В корзину</Text>
             </TouchableOpacity>
         </View>
     );
 
     const renderRequest = ({ item }) => (
-        <View style={styles.requestCard}>
+        <TouchableOpacity
+            style={styles.requestCard}
+            onPress={() => setSelectedRequest(item)}
+        >
             <View style={styles.requestHeader}>
-                <Text style={styles.requestProduct}>{item.product_name}</Text>
+                <Text style={styles.requestProduct}>
+                    Заявка #{item.id}
+                </Text>
                 <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.badgeText}>{item.status}</Text>
+                    <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
                 </View>
             </View>
-
             <Text style={styles.requestDetail}>
-                Quantity: {item.quantity}
+                Поставщик: {item.supplier_name}
             </Text>
             <Text style={styles.requestDetail}>
-                Total: ${item.total_price || (parseFloat(item.quantity) * 0).toFixed(2)}
+                Товаров: {item.items?.length || 0}
             </Text>
-            {item.note ? (
-                <Text style={styles.requestNote}>Note: {item.note}</Text>
+            {item.total_price && (
+                <Text style={styles.requestDetail}>
+                    Итого: {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
+                </Text>
+            )}
+            {item.delivery_address ? (
+                <Text style={styles.requestDetail} numberOfLines={1}>
+                    Адрес: {item.delivery_address}
+                </Text>
             ) : null}
             <Text style={styles.requestDate}>
-                {new Date(item.created_at).toLocaleDateString()}
+                {new Date(item.created_at).toLocaleDateString('ru-RU')}
             </Text>
-
-            {item.response && (
-                <View style={styles.responseBox}>
-                    <Text style={styles.responseTitle}>
-                        Supplier response:
-                    </Text>
-                    <Text style={styles.responseText}>
-                        {item.response.message}
-                    </Text>
-                    {item.response.offered_price && (
-                        <Text style={styles.responsePrice}>
-                            Offered price: ${item.response.offered_price}
-                        </Text>
-                    )}
-                </View>
-            )}
-
             {item.status === 'pending' && (
                 <View style={styles.pendingBox}>
-                    <Text style={styles.pendingText}>
-                        ⏳ Waiting for supplier response
+                    <Text style={styles.pendingText}>⏳ Ожидаем ответа поставщика</Text>
+                </View>
+            )}
+            {item.response && (
+                <View style={styles.responseBox}>
+                    <Text style={styles.responseTitle}>Ответ поставщика:</Text>
+                    <Text style={styles.responseText} numberOfLines={2}>
+                        {item.response.message}
                     </Text>
                 </View>
             )}
-        </View>
+            <Text style={styles.tapHint}>Нажмите для подробностей →</Text>
+        </TouchableOpacity>
     );
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>
                     {view === 'products' && selectedSupplier
                         ? selectedSupplier.company_name || selectedSupplier.username
-                        : view === 'suppliers' ? 'Suppliers'
-                        : view === 'requests' ? 'My Requests'
-                        : 'All Products'}
+                        : view === 'suppliers' ? 'Поставщики'
+                        : view === 'requests' ? 'Мои заявки'
+                        : 'Все товары'}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => setShowCart(true)}>
+                        <Text style={styles.logout}>
+                            🛒{getTotalItems() > 0 ? ` ${getTotalItems()}` : ''}
+                        </Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowNotifications(true)}>
                         <Text style={styles.logout}>🔔</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={signOut}>
-                        <Text style={styles.logout}>Logout</Text>
+                        <Text style={styles.logout}>Выйти</Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Tabs */}
             <View style={styles.tabs}>
                 <TouchableOpacity
                     style={[styles.tab, view === 'all' && styles.tabActive]}
@@ -272,7 +260,7 @@ export default function ClientHomeScreen() {
                     }}
                 >
                     <Text style={[styles.tabText, view === 'all' && styles.tabTextActive]}>
-                        Products
+                        Товары
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -284,7 +272,7 @@ export default function ClientHomeScreen() {
                     }}
                 >
                     <Text style={[styles.tabText, (view === 'suppliers' || view === 'products') && styles.tabTextActive]}>
-                        Suppliers
+                        Поставщики
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -292,12 +280,11 @@ export default function ClientHomeScreen() {
                     onPress={() => setView('requests')}
                 >
                     <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>
-                        My Requests
+                        Мои заявки
                     </Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Back button */}
             {view === 'products' && (
                 <TouchableOpacity
                     style={styles.backButton}
@@ -306,21 +293,19 @@ export default function ClientHomeScreen() {
                         setSearch('');
                     }}
                 >
-                    <Text style={styles.backText}>← Back to suppliers</Text>
+                    <Text style={styles.backText}>← Назад к поставщикам</Text>
                 </TouchableOpacity>
             )}
 
-            {/* Search bar */}
             {(view === 'all' || view === 'products') && (
                 <TextInput
                     style={styles.search}
-                    placeholder={view === 'all' ? 'Search all products...' : 'Search products...'}
+                    placeholder={view === 'all' ? 'Поиск по всем товарам...' : 'Поиск товаров...'}
                     value={search}
                     onChangeText={handleSearch}
                 />
             )}
 
-            {/* Content */}
             {loading ? (
                 <ActivityIndicator style={styles.loader} size="large" color="#4F46E5" />
             ) : view === 'suppliers' ? (
@@ -330,7 +315,7 @@ export default function ClientHomeScreen() {
                     renderItem={renderSupplier}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>No suppliers found</Text>
+                        <Text style={styles.empty}>Поставщики не найдены</Text>
                     }
                 />
             ) : view === 'requests' ? (
@@ -340,7 +325,7 @@ export default function ClientHomeScreen() {
                     renderItem={renderRequest}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>No requests yet</Text>
+                        <Text style={styles.empty}>Заявок пока нет</Text>
                     }
                 />
             ) : (
@@ -350,81 +335,32 @@ export default function ClientHomeScreen() {
                     renderItem={renderProduct}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>No products found</Text>
+                        <Text style={styles.empty}>Товары не найдены</Text>
                     }
                 />
             )}
 
-            {/* Request Modal */}
-            <Modal visible={modalVisible} transparent animationType="slide">
-                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                    <View style={styles.modalOverlay}>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        >
-                            <View style={styles.modalContent}>
-                                <Text style={styles.modalTitle}>
-                                    {selectedProduct?.name}
-                                </Text>
-                                <Text style={styles.modalSubtitle}>
-                                    From: {selectedProduct?.supplier_name}
-                                </Text>
+            {showCart && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <CartScreen onClose={() => setShowCart(false)} />
+                </View>
+            )}
 
-                                <View style={styles.priceRow}>
-                                    <Text style={styles.priceLabel}>Price per unit:</Text>
-                                    <Text style={styles.priceValue}>
-                                        ${selectedProduct?.price} / {selectedProduct?.unit}
-                                    </Text>
-                                </View>
-
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Quantity"
-                                    value={quantity}
-                                    onChangeText={setQuantity}
-                                    keyboardType="numeric"
-                                />
-
-                                {quantity ? (
-                                    <View style={styles.totalBox}>
-                                        <Text style={styles.totalLabel}>Total:</Text>
-                                        <Text style={styles.totalValue}>
-                                            ${(parseFloat(selectedProduct?.price) * parseInt(quantity || 0)).toFixed(2)}
-                                        </Text>
-                                    </View>
-                                ) : null}
-
-                                <TextInput
-                                    style={[styles.input, styles.textArea]}
-                                    placeholder="Note (optional)"
-                                    value={note}
-                                    onChangeText={setNote}
-                                    multiline
-                                    numberOfLines={3}
-                                />
-                                <TouchableOpacity
-                                    style={styles.button}
-                                    onPress={handleSubmitRequest}
-                                >
-                                    <Text style={styles.buttonText}>Send Request</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => {
-                                        Keyboard.dismiss();
-                                        setModalVisible(false);
-                                    }}
-                                >
-                                    <Text style={styles.cancelText}>Cancel</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </KeyboardAvoidingView>
-                    </View>
-                </TouchableWithoutFeedback>
-            </Modal>
+            {selectedRequest && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <RequestDetailScreen
+                        request={selectedRequest}
+                        onClose={() => setSelectedRequest(null)}
+                        onUpdate={() => {
+                            loadMyRequests();
+                            setSelectedRequest(null);
+                        }}
+                    />
+                </View>
+            )}
 
             {showNotifications && (
-                <View style={StyleSheet.absoluteFill}>
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
                     <NotificationsScreen onClose={() => setShowNotifications(false)} />
                 </View>
             )}
@@ -528,7 +464,6 @@ const styles = StyleSheet.create({
     supplierName: { fontSize: 13, color: '#4F46E5', marginTop: 2 },
     productDesc: { fontSize: 13, color: '#666', marginTop: 4 },
     productPrice: { fontSize: 15, fontWeight: '600', color: '#4F46E5', marginTop: 8 },
-    productStock: { fontSize: 13, color: '#999', marginTop: 2 },
     requestButton: {
         backgroundColor: '#4F46E5',
         padding: 12,
@@ -560,7 +495,6 @@ const styles = StyleSheet.create({
     },
     badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
     requestDetail: { fontSize: 14, color: '#444', marginTop: 2 },
-    requestNote: { fontSize: 13, color: '#888', marginTop: 4, fontStyle: 'italic' },
     requestDate: { fontSize: 12, color: '#bbb', marginTop: 6 },
     responseBox: {
         backgroundColor: '#f0f4ff',
@@ -570,7 +504,6 @@ const styles = StyleSheet.create({
     },
     responseTitle: { fontSize: 13, fontWeight: '600', color: '#4F46E5' },
     responseText: { fontSize: 13, color: '#444', marginTop: 4 },
-    responsePrice: { fontSize: 14, fontWeight: '600', color: '#10B981', marginTop: 4 },
     pendingBox: {
         backgroundColor: '#FFF8E7',
         borderRadius: 8,
@@ -579,60 +512,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     pendingText: { fontSize: 13, color: '#F59E0B' },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
+    tapHint: {
+        fontSize: 12,
+        color: '#4F46E5',
+        marginTop: 10,
+        textAlign: 'right',
     },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
-    },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-    modalSubtitle: { fontSize: 14, color: '#666', marginBottom: 12 },
-    priceRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    priceLabel: { fontSize: 14, color: '#666' },
-    priceValue: { fontSize: 15, fontWeight: '600', color: '#4F46E5' },
-    totalBox: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f0f4ff',
-        padding: 14,
-        borderRadius: 8,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-    },
-    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 12,
-        fontSize: 16,
-    },
-    textArea: { height: 80, textAlignVertical: 'top' },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    cancelButton: { alignItems: 'center', padding: 12 },
-    cancelText: { color: '#666', fontSize: 16 },
 });

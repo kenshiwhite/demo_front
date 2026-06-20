@@ -22,17 +22,17 @@ export default function RegisterScreen({ navigation }) {
 
     const handleRegister = async () => {
         if (!form.username || !form.email || !form.password) {
-            Alert.alert('Error', 'Please fill in all required fields');
+            Alert.alert('Ошибка', 'Пожалуйста, заполните обязательные поля');
             return;
         }
         setLoading(true);
         try {
             await register(form);
-            Alert.alert('Success', 'Account created! Please login.', [
+            Alert.alert('Успешно', 'Аккаунт создан! Войдите в систему.', [
                 { text: 'OK', onPress: () => navigation.navigate('Login') }
             ]);
         } catch (error) {
-            Alert.alert('Error', 'Registration failed. Try a different username.');
+            Alert.alert('Ошибка', 'Регистрация не удалась. Попробуйте другой логин.');
         } finally {
             setLoading(false);
         }
@@ -40,12 +40,12 @@ export default function RegisterScreen({ navigation }) {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join as a client or supplier</Text>
+            <Text style={styles.title}>Создать аккаунт</Text>
+            <Text style={styles.subtitle}>Зарегистрируйтесь как клиент или поставщик</Text>
 
             <TextInput
                 style={styles.input}
-                placeholder="Username *"
+                placeholder="Имя пользователя *"
                 value={form.username}
                 onChangeText={(v) => handleChange('username', v)}
                 autoCapitalize="none"
@@ -60,33 +60,33 @@ export default function RegisterScreen({ navigation }) {
             />
             <TextInput
                 style={styles.input}
-                placeholder="Password *"
+                placeholder="Пароль *"
                 value={form.password}
                 onChangeText={(v) => handleChange('password', v)}
                 secureTextEntry
             />
             <TextInput
                 style={styles.input}
-                placeholder="Company Name"
+                placeholder="Название компании"
                 value={form.company_name}
                 onChangeText={(v) => handleChange('company_name', v)}
             />
             <TextInput
                 style={styles.input}
-                placeholder="Phone"
+                placeholder="Телефон"
                 value={form.phone}
                 onChangeText={(v) => handleChange('phone', v)}
                 keyboardType="phone-pad"
             />
 
-            <Text style={styles.label}>I am a:</Text>
+            <Text style={styles.label}>Я являюсь:</Text>
             <View style={styles.roleContainer}>
                 <TouchableOpacity
                     style={[styles.roleButton, form.role === 'client' && styles.roleActive]}
                     onPress={() => handleChange('role', 'client')}
                 >
                     <Text style={[styles.roleText, form.role === 'client' && styles.roleTextActive]}>
-                        Client
+                        Клиент
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -94,7 +94,7 @@ export default function RegisterScreen({ navigation }) {
                     onPress={() => handleChange('role', 'supplier')}
                 >
                     <Text style={[styles.roleText, form.role === 'supplier' && styles.roleTextActive]}>
-                        Supplier
+                        Поставщик
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -106,12 +106,12 @@ export default function RegisterScreen({ navigation }) {
             >
                 {loading
                     ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.buttonText}>Create Account</Text>
+                    : <Text style={styles.buttonText}>Создать аккаунт</Text>
                 }
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.link}>Already have an account? Login</Text>
+                <Text style={styles.link}>Уже есть аккаунт? Войти</Text>
             </TouchableOpacity>
         </ScrollView>
     );

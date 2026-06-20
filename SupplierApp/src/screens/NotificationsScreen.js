@@ -22,7 +22,7 @@ export default function NotificationsScreen({ onClose }) {
             const countResponse = await client.get('/api/notifications/unread_count/');
             setUnreadCount(countResponse.data.unread_count);
         } catch (e) {
-            console.log('Could not load notifications');
+            console.log('Не удалось загрузить уведомления');
         } finally {
             setLoading(false);
         }
@@ -33,7 +33,7 @@ export default function NotificationsScreen({ onClose }) {
             await client.post(`/api/notifications/${id}/mark_read/`);
             loadNotifications();
         } catch (e) {
-            console.log('Could not mark as read');
+            console.log('Не удалось отметить как прочитанное');
         }
     };
 
@@ -42,7 +42,7 @@ export default function NotificationsScreen({ onClose }) {
             await client.post('/api/notifications/mark_all_read/');
             loadNotifications();
         } catch (e) {
-            console.log('Could not mark all as read');
+            console.log('Не удалось отметить все как прочитанные');
         }
     };
 
@@ -67,7 +67,7 @@ export default function NotificationsScreen({ onClose }) {
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.message}>{item.message}</Text>
                 <Text style={styles.time}>
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {new Date(item.created_at).toLocaleDateString('ru-RU')}
                 </Text>
             </View>
             {!item.is_read && <View style={styles.unreadDot} />}
@@ -78,14 +78,14 @@ export default function NotificationsScreen({ onClose }) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.close}>← Back</Text>
+                    <Text style={styles.close}>← Назад</Text>
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
-                    Notifications {unreadCount > 0 ? `(${unreadCount})` : ''}
+                    Уведомления {unreadCount > 0 ? `(${unreadCount})` : ''}
                 </Text>
                 {unreadCount > 0 && (
                     <TouchableOpacity onPress={handleMarkAllRead}>
-                        <Text style={styles.markAll}>Mark all read</Text>
+                        <Text style={styles.markAll}>Прочитать все</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -99,7 +99,7 @@ export default function NotificationsScreen({ onClose }) {
                     renderItem={renderNotification}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>No notifications yet</Text>
+                        <Text style={styles.empty}>Уведомлений пока нет</Text>
                     }
                 />
             )}
