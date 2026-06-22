@@ -4,7 +4,7 @@ import {
     StyleSheet, TextInput, ActivityIndicator,
     Alert, Modal, Image, KeyboardAvoidingView,
     Platform, TouchableWithoutFeedback, Keyboard,
-    ScrollView
+    ScrollView, Dimensions
 } from 'react-native';
 import { getSuppliers, getProducts, getAllProducts } from '../api/catalog';
 import { getMyRequests } from '../api/requests';
@@ -14,11 +14,16 @@ import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import CartScreen from './CartScreen';
 import ProfileScreen from './ProfileScreen';
+import ProductDetailScreen from './ProductDetailScreen';
+
+const screenWidth = Dimensions.get('window').width;
+const cardWidth = (screenWidth - 48) / 2;
 
 export default function ClientHomeScreen() {
     const { signOut, user } = useAuth();
     const { addToCart, getTotalItems } = useCart();
     const [view, setView] = useState('all');
+    const [displayMode, setDisplayMode] = useState('grid'); // grid | list
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
     const [myRequests, setMyRequests] = useState([]);
@@ -26,6 +31,7 @@ export default function ClientHomeScreen() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showCart, setShowCart] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
@@ -96,6 +102,13 @@ export default function ClientHomeScreen() {
         }
     };
 
+    const handleSupplierPress = (supplier) => {
+        setSelectedSupplier(supplier);
+        setView('products');
+        setSearch('');
+        loadSupplierProducts(supplier.id);
+    };
+
     const handleAddToCart = (item) => {
         setSelectedProductForCart(item);
         setCartQuantity('1');
@@ -115,13 +128,6 @@ export default function ClientHomeScreen() {
         addToCart(selectedProductForCart, qty);
         setQuantityModal(false);
         Alert.alert('Добавлено', `${selectedProductForCart.name} x${qty} добавлен в корзину`);
-    };
-
-    const handleSupplierPress = (supplier) => {
-        setSelectedSupplier(supplier);
-        setView('products');
-        setSearch('');
-        loadSupplierProducts(supplier.id);
     };
 
     const getStatusColor = (status) => {
@@ -144,6 +150,38 @@ export default function ClientHomeScreen() {
         return texts[status] || status;
     };
 
+    const renderSupplierHeader = () => {
+        if (!selectedSupplier) return null;
+        return (
+            <View style={styles.supplierHeader}>
+                <View style={styles.supplierHeaderAvatar}>
+                    <Text style={styles.supplierHeaderAvatarText}>
+                        {selectedSupplier.company_name?.[0] ||
+                         selectedSupplier.username?.[0]?.toUpperCase()}
+                    </Text>
+                </View>
+                <View style={styles.supplierHeaderInfo}>
+                    <Text style={styles.supplierHeaderName}>
+                        {selectedSupplier.company_name || selectedSupplier.username}
+                    </Text>
+                    {selectedSupplier.description ? (
+                        <Text style={styles.supplierHeaderDesc} numberOfLines={2}>
+                            {selectedSupplier.description}
+                        </Text>
+                    ) : null}
+                    {selectedSupplier.phone ? (
+                        <Text style={styles.supplierHeaderPhone}>
+                            📞 {selectedSupplier.phone}
+                        </Text>
+                    ) : null}
+                    <Text style={styles.supplierHeaderProducts}>
+                        {selectedSupplier.product_count} товаров
+                    </Text>
+                </View>
+            </View>
+        );
+    };
+
     const renderSupplier = ({ item }) => (
         <TouchableOpacity
             style={styles.card}
@@ -158,6 +196,11 @@ export default function ClientHomeScreen() {
                 <Text style={styles.cardTitle}>
                     {item.company_name || item.username}
                 </Text>
+                {item.description ? (
+                    <Text style={styles.cardDesc} numberOfLines={1}>
+                        {item.description}
+                    </Text>
+                ) : null}
                 <Text style={styles.cardSubtitle}>
                     {item.product_count} товаров доступно
                 </Text>
@@ -166,8 +209,48 @@ export default function ClientHomeScreen() {
         </TouchableOpacity>
     );
 
-    const renderProduct = ({ item }) => (
-        <View style={styles.productCard}>
+    // GRID product card (small, 2 per row)
+    const renderGridProduct = ({ item }) => (
+        <TouchableOpacity
+            style={styles.gridCard}
+            onPress={() => setSelectedProduct(item)}
+        >
+            {item.image ? (
+                <Image
+                    source={{ uri: item.image }}
+                    style={styles.gridImage}
+                    resizeMode="cover"
+                />
+            ) : (
+                <View style={styles.gridImagePlaceholder}>
+                    <Text style={styles.placeholderText}>Нет фото</Text>
+                </View>
+            )}
+            <View style={styles.gridInfo}>
+                <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
+                <Text style={styles.gridSupplier} numberOfLines={1}>
+                    {item.supplier_name}
+                </Text>
+                <Text style={styles.gridPrice}>
+                    {parseInt(item.price).toLocaleString('ru-RU')} ₸
+                </Text>
+                <Text style={styles.gridUnit}>/{item.unit}</Text>
+            </View>
+            <TouchableOpacity
+                style={styles.gridCartBtn}
+                onPress={() => handleAddToCart(item)}
+            >
+                <Text style={styles.gridCartBtnText}>+ В корзину</Text>
+            </TouchableOpacity>
+        </TouchableOpacity>
+    );
+
+    // LIST product card (big, 1 per row)
+    const renderListProduct = ({ item }) => (
+        <TouchableOpacity
+            style={styles.productCard}
+            onPress={() => setSelectedProduct(item)}
+        >
             {item.image ? (
                 <Image
                     source={{ uri: item.image }}
@@ -195,8 +278,7 @@ export default function ClientHomeScreen() {
             >
                 <Text style={styles.requestButtonText}>В корзину</Text>
             </TouchableOpacity>
-            
-        </View>
+        </TouchableOpacity>
     );
 
     const renderRequest = ({ item }) => (
@@ -210,12 +292,8 @@ export default function ClientHomeScreen() {
                     <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
                 </View>
             </View>
-            <Text style={styles.requestDetail}>
-                Поставщик: {item.supplier_name}
-            </Text>
-            <Text style={styles.requestDetail}>
-                Товаров: {item.items?.length || 0}
-            </Text>
+            <Text style={styles.requestDetail}>Поставщик: {item.supplier_name}</Text>
+            <Text style={styles.requestDetail}>Товаров: {item.items?.length || 0}</Text>
             {item.total_price && (
                 <Text style={styles.requestDetail}>
                     Итого: {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
@@ -245,6 +323,8 @@ export default function ClientHomeScreen() {
             <Text style={styles.tapHint}>Нажмите для подробностей →</Text>
         </TouchableOpacity>
     );
+
+    const isProductView = view === 'all' || view === 'products';
 
     return (
         <View style={styles.container}>
@@ -319,13 +399,25 @@ export default function ClientHomeScreen() {
                 </TouchableOpacity>
             )}
 
-            {(view === 'all' || view === 'products') && (
-                <TextInput
-                    style={styles.search}
-                    placeholder={view === 'all' ? 'Поиск по всем товарам...' : 'Поиск товаров...'}
-                    value={search}
-                    onChangeText={handleSearch}
-                />
+            {view === 'products' && renderSupplierHeader()}
+
+            {isProductView && (
+                <View style={styles.searchRow}>
+                    <TextInput
+                        style={styles.search}
+                        placeholder={view === 'all' ? 'Поиск по всем товарам...' : 'Поиск товаров...'}
+                        value={search}
+                        onChangeText={handleSearch}
+                    />
+                    <TouchableOpacity
+                        style={styles.toggleBtn}
+                        onPress={() => setDisplayMode(d => d === 'grid' ? 'list' : 'grid')}
+                    >
+                        <Text style={styles.toggleBtnText}>
+                            {displayMode === 'grid' ? '☰' : '⊞'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             )}
 
             {loading ? (
@@ -350,16 +442,112 @@ export default function ClientHomeScreen() {
                         <Text style={styles.empty}>Заявок пока нет</Text>
                     }
                 />
+            ) : displayMode === 'grid' ? (
+                <FlatList
+                    data={products}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderGridProduct}
+                    numColumns={2}
+                    columnWrapperStyle={styles.gridRow}
+                    contentContainerStyle={styles.gridList}
+                    ListEmptyComponent={
+                        <Text style={styles.empty}>Товары не найдены</Text>
+                    }
+                />
             ) : (
                 <FlatList
                     data={products}
                     keyExtractor={(item) => item.id.toString()}
-                    renderItem={renderProduct}
+                    renderItem={renderListProduct}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <Text style={styles.empty}>Товары не найдены</Text>
                     }
                 />
+            )}
+
+            {/* Quantity Modal */}
+            <Modal visible={quantityModal} transparent animationType="slide">
+                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+                    <View style={styles.modalOverlay}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        >
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>
+                                    {selectedProductForCart?.name}
+                                </Text>
+                                <Text style={styles.modalSubtitle}>
+                                    {parseInt(selectedProductForCart?.price).toLocaleString('ru-RU')} ₸ / {selectedProductForCart?.unit}
+                                </Text>
+                                <View style={styles.qtyRow}>
+                                    <TouchableOpacity
+                                        style={styles.qtyBtn}
+                                        onPress={() => setCartQuantity(q => Math.max(1, parseInt(q || 1) - 1).toString())}
+                                    >
+                                        <Text style={styles.qtyBtnText}>−</Text>
+                                    </TouchableOpacity>
+                                    <TextInput
+                                        style={styles.qtyInput}
+                                        value={cartQuantity}
+                                        onChangeText={setCartQuantity}
+                                        keyboardType="numeric"
+                                        textAlign="center"
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.qtyBtn}
+                                        onPress={() => setCartQuantity(q => {
+                                            const next = parseInt(q || 0) + 1;
+                                            if (next > selectedProductForCart?.stock_quantity) return q;
+                                            return next.toString();
+                                        })}
+                                    >
+                                        <Text style={styles.qtyBtnText}>+</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                {cartQuantity ? (
+                                    <View style={styles.totalBox}>
+                                        <Text style={styles.totalLabel}>Итого:</Text>
+                                        <Text style={styles.totalValue}>
+                                            {(parseFloat(selectedProductForCart?.price) * parseInt(cartQuantity || 0)).toLocaleString('ru-RU')} ₸
+                                        </Text>
+                                    </View>
+                                ) : null}
+                                <Text style={styles.stockHint}>
+                                    Доступно: {selectedProductForCart?.stock_quantity} {selectedProductForCart?.unit}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.button}
+                                    onPress={handleConfirmAddToCart}
+                                >
+                                    <Text style={styles.buttonText}>Добавить в корзину</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        Keyboard.dismiss();
+                                        setQuantityModal(false);
+                                    }}
+                                >
+                                    <Text style={styles.cancelText}>Отмена</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </KeyboardAvoidingView>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+
+            {selectedProduct && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <ProductDetailScreen
+                        product={selectedProduct}
+                        onClose={() => setSelectedProduct(null)}
+                        onAddToCart={(product) => {
+                            setSelectedProduct(null);
+                            handleAddToCart(product);
+                        }}
+                    />
+                </View>
             )}
 
             {showCart && (
@@ -392,77 +580,6 @@ export default function ClientHomeScreen() {
                     <ProfileScreen onClose={() => setShowProfile(false)} />
                 </View>
             )}
-            {/* Quantity Modal */}
-            <Modal visible={quantityModal} transparent animationType="slide">
-                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                    <View style={styles.modalOverlay}>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        >
-                            <View style={styles.modalContent}>
-                                <Text style={styles.modalTitle}>
-                                    {selectedProductForCart?.name}
-                                </Text>
-                                <Text style={styles.modalSubtitle}>
-                                    {parseInt(selectedProductForCart?.price).toLocaleString('ru-RU')} ₸ / {selectedProductForCart?.unit}
-                                </Text>
-
-                                <View style={styles.qtyRow}>
-                                    <TouchableOpacity
-                                        style={styles.qtyBtn}
-                                        onPress={() => setCartQuantity(q => Math.max(1, parseInt(q || 1) - 1).toString())}
-                                    >
-                                        <Text style={styles.qtyBtnText}>−</Text>
-                                    </TouchableOpacity>
-                                    <TextInput
-                                        style={styles.qtyInput}
-                                        value={cartQuantity}
-                                        onChangeText={setCartQuantity}
-                                        keyboardType="numeric"
-                                        textAlign="center"
-                                    />
-                                    <TouchableOpacity
-                                        style={styles.qtyBtn}
-                                        onPress={() => setCartQuantity(q => {
-                                            const next = parseInt(q || 0) + 1;
-                                            if (next > selectedProductForCart?.stock_quantity) return q;
-                                            return next.toString();
-                                        })}
-                                    >
-                                        <Text style={styles.qtyBtnText}>+</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {cartQuantity ? (
-                                    <View style={styles.totalBox}>
-                                        <Text style={styles.totalLabel}>Итого:</Text>
-                                        <Text style={styles.totalValue}>
-                                            {(parseFloat(selectedProductForCart?.price) * parseInt(cartQuantity || 0)).toLocaleString('ru-RU')} ₸
-                                        </Text>
-                                    </View>
-                                ) : null}
-
-                                <TouchableOpacity
-                                    style={styles.button}
-                                    onPress={handleConfirmAddToCart}
-                                >
-                                    <Text style={styles.buttonText}>Добавить в корзину</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => {
-                                        Keyboard.dismiss();
-                                        setQuantityModal(false);
-                                    }}
-                                >
-                                    <Text style={styles.cancelText}>Отмена</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </KeyboardAvoidingView>
-                    </View>
-                </TouchableWithoutFeedback>
-            </Modal>
         </View>
     );
 }
@@ -494,7 +611,36 @@ const styles = StyleSheet.create({
     tabTextActive: { color: '#4F46E5', fontWeight: '600' },
     backButton: { padding: 12, backgroundColor: '#fff' },
     backText: { color: '#4F46E5', fontSize: 14 },
+    supplierHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#f0f4ff',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e8ff',
+        alignItems: 'flex-start',
+    },
+    supplierHeaderAvatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#4F46E5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+    },
+    supplierHeaderAvatarText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+    supplierHeaderInfo: { flex: 1 },
+    supplierHeaderName: { fontSize: 17, fontWeight: '700', color: '#1a1a1a', marginBottom: 4 },
+    supplierHeaderDesc: { fontSize: 13, color: '#666', lineHeight: 18, marginBottom: 4 },
+    supplierHeaderPhone: { fontSize: 13, color: '#4F46E5', marginBottom: 4 },
+    supplierHeaderProducts: { fontSize: 12, color: '#999' },
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: 12,
+    },
     search: {
+        flex: 1,
         margin: 12,
         padding: 12,
         backgroundColor: '#fff',
@@ -503,7 +649,18 @@ const styles = StyleSheet.create({
         borderColor: '#ddd',
         fontSize: 16,
     },
+    toggleBtn: {
+        width: 44,
+        height: 44,
+        backgroundColor: '#4F46E5',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    toggleBtnText: { color: '#fff', fontSize: 20 },
     list: { padding: 12 },
+    gridList: { padding: 12 },
+    gridRow: { gap: 12, marginBottom: 12 },
     loader: { marginTop: 40 },
     empty: { textAlign: 'center', color: '#999', marginTop: 40 },
     card: {
@@ -530,8 +687,45 @@ const styles = StyleSheet.create({
     avatarText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
     cardInfo: { flex: 1 },
     cardTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+    cardDesc: { fontSize: 12, color: '#888', marginTop: 2 },
     cardSubtitle: { fontSize: 13, color: '#666', marginTop: 2 },
     arrow: { fontSize: 24, color: '#ccc' },
+
+    // Grid card styles
+    gridCard: {
+        width: cardWidth,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    gridImage: {
+        width: '100%',
+        height: 120,
+    },
+    gridImagePlaceholder: {
+        width: '100%',
+        height: 120,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    gridInfo: { padding: 8 },
+    gridName: { fontSize: 13, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
+    gridSupplier: { fontSize: 11, color: '#4F46E5', marginBottom: 4 },
+    gridPrice: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a' },
+    gridUnit: { fontSize: 11, color: '#999' },
+    gridCartBtn: {
+        backgroundColor: '#4F46E5',
+        padding: 8,
+        alignItems: 'center',
+    },
+    gridCartBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+
+    // List card styles
     productCard: {
         backgroundColor: '#fff',
         borderRadius: 12,
@@ -570,6 +764,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     requestButtonText: { color: '#fff', fontWeight: '600' },
+
+    // Request card
     requestCard: {
         backgroundColor: '#fff',
         borderRadius: 12,
@@ -587,11 +783,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     requestProduct: { fontSize: 16, fontWeight: '600', color: '#1a1a1a', flex: 1 },
-    badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
-    },
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
     badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
     requestDetail: { fontSize: 14, color: '#444', marginTop: 2 },
     requestDate: { fontSize: 12, color: '#bbb', marginTop: 6 },
@@ -611,71 +803,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     pendingText: { fontSize: 13, color: '#F59E0B' },
-    tapHint: {
-        fontSize: 12,
-        color: '#4F46E5',
-        marginTop: 10,
-        textAlign: 'right',
-    },
-    qtyRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-        marginBottom: 16,
-    },
-    qtyBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#4F46E5',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    qtyBtnText: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: '600',
-        lineHeight: 26,
-    },
-    qtyInput: {
-        borderWidth: 2,
-        borderColor: '#4F46E5',
-        borderRadius: 8,
-        width: 80,
-        height: 48,
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        textAlign: 'center',
-    },
-    stockHint: {
-        textAlign: 'center',
-        color: '#999',
-        fontSize: 13,
-        marginBottom: 16,
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
-    },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-    modalSubtitle: { fontSize: 14, color: '#4F46E5', marginBottom: 20 },
-    totalBox: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f0f4ff',
-        padding: 14,
-        borderRadius: 8,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-    },
-    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
+    tapHint: { fontSize: 12, color: '#4F46E5', marginTop: 10, textAlign: 'right' },
+
+    // Modal
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -689,35 +819,6 @@ const styles = StyleSheet.create({
     },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
     modalSubtitle: { fontSize: 14, color: '#4F46E5', marginBottom: 20 },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    cancelButton: { alignItems: 'center', padding: 12 },
-    cancelText: { color: '#666', fontSize: 16 },
-    totalBox: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f0f4ff',
-        padding: 14,
-        borderRadius: 8,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-    },
-    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
-    stockHint: {
-        textAlign: 'center',
-        color: '#999',
-        fontSize: 13,
-        marginBottom: 16,
-    },
     qtyRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -733,12 +834,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    qtyBtnText: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: '600',
-        lineHeight: 26,
-    },
+    qtyBtnText: { color: '#fff', fontSize: 24, fontWeight: '600', lineHeight: 26 },
     qtyInput: {
         borderWidth: 2,
         borderColor: '#4F46E5',
@@ -750,4 +846,28 @@ const styles = StyleSheet.create({
         color: '#1a1a1a',
         textAlign: 'center',
     },
+    totalBox: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#f0f4ff',
+        padding: 14,
+        borderRadius: 8,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#4F46E5',
+    },
+    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
+    stockHint: { textAlign: 'center', color: '#999', fontSize: 13, marginBottom: 16 },
+    button: {
+        backgroundColor: '#4F46E5',
+        padding: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+    cancelButton: { alignItems: 'center', padding: 12 },
+    cancelText: { color: '#666', fontSize: 16 },
 });

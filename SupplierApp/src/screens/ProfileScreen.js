@@ -15,10 +15,11 @@ export default function ProfileScreen({ onClose }) {
     const [passwordModal, setPasswordModal] = useState(false);
     const [emailModal, setEmailModal] = useState(false);
 
+
     const [form, setForm] = useState({
         company_name: user?.company_name || '',
         phone: user?.phone || '',
-        email: user?.email || '',
+        description: user?.description || '',
     });
 
     const [passwordForm, setPasswordForm] = useState({
@@ -32,9 +33,10 @@ export default function ProfileScreen({ onClose }) {
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
-            const response = await client.patch('/api/auth/profile/', {
+            await client.patch('/api/auth/profile/', {
                 company_name: form.company_name,
                 phone: form.phone,
+                description: form.description,
             });
             const updatedUser = await client.get('/api/auth/me/');
             await signIn(updatedUser.data);
@@ -176,6 +178,23 @@ export default function ProfileScreen({ onClose }) {
                         ) : (
                             <Text style={styles.fieldValue}>
                                 {user?.company_name || '—'}
+                            </Text>
+                        )}
+                    </View>
+
+                    <View style={styles.field}>
+                        <Text style={styles.fieldLabel}>О компании</Text>
+                        {editing ? (
+                            <TextInput
+                                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                                value={form.description}
+                                onChangeText={(v) => setForm(p => ({ ...p, description: v }))}
+                                placeholder="Краткое описание вашей компании"
+                                multiline
+                            />
+                        ) : (
+                            <Text style={styles.fieldValue}>
+                                {user?.description || '—'}
                             </Text>
                         )}
                     </View>
