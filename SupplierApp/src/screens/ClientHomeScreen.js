@@ -444,6 +444,7 @@ export default function ClientHomeScreen() {
                 />
             ) : displayMode === 'grid' ? (
                 <FlatList
+                    key="grid"
                     data={products}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderGridProduct}
@@ -456,6 +457,7 @@ export default function ClientHomeScreen() {
                 />
             ) : (
                 <FlatList
+                    key="list"
                     data={products}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderListProduct}
