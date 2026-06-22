@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useCart } from '../context/CartContext';
 import client from '../api/client';
+import ProductDetailScreen from './ProductDetailScreen';
 
 export default function CartScreen({ onClose }) {
     const { cart, removeFromCart, updateQuantity, clearSupplierCart } = useCart();
@@ -18,6 +19,7 @@ export default function CartScreen({ onClose }) {
     const [contactPhone, setContactPhone] = useState('');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
 
     const supplierGroups = Object.values(cart);
     const totalItems = supplierGroups.reduce((t, s) => t + s.items.length, 0);
@@ -68,26 +70,31 @@ export default function CartScreen({ onClose }) {
 
     const renderItem = (supplierId, item) => (
         <View key={item.product.id} style={styles.cartItem}>
-            {item.product.image ? (
-                <Image
-                    source={{ uri: item.product.image }}
-                    style={styles.itemImage}
-                    resizeMode="cover"
-                />
-            ) : (
-                <View style={styles.itemImagePlaceholder}>
-                    <Text style={styles.placeholderText}>Нет фото</Text>
+            <TouchableOpacity
+                style={styles.itemClickable}
+                onPress={() => setSelectedProduct(item.product)}
+            >
+                {item.product.image ? (
+                    <Image
+                        source={{ uri: item.product.image }}
+                        style={styles.itemImage}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    <View style={styles.itemImagePlaceholder}>
+                        <Text style={styles.placeholderText}>Нет фото</Text>
+                    </View>
+                )}
+                <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{item.product.name}</Text>
+                    <Text style={styles.itemPrice}>
+                        {parseInt(item.product.price).toLocaleString('ru-RU')} ₸ / {item.product.unit}
+                    </Text>
+                    <Text style={styles.itemTotal}>
+                        Итого: {(parseInt(item.product.price) * item.quantity).toLocaleString('ru-RU')} ₸
+                    </Text>
                 </View>
-            )}
-            <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.product.name}</Text>
-                <Text style={styles.itemPrice}>
-                    {parseInt(item.product.price).toLocaleString('ru-RU')} ₸ / {item.product.unit}
-                </Text>
-                <Text style={styles.itemTotal}>
-                    Итого: {(parseInt(item.product.price) * item.quantity).toLocaleString('ru-RU')} ₸
-                </Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.quantityControl}>
                 <TouchableOpacity
                     style={styles.qtyBtn}
@@ -118,6 +125,7 @@ export default function CartScreen({ onClose }) {
             </View>
         </View>
     );
+
     const renderSupplierGroup = ({ item: supplierGroup }) => {
         const supplierId = supplierGroup.supplier.id.toString();
         const total = getSupplierTotal(supplierGroup.items);
@@ -282,6 +290,17 @@ export default function CartScreen({ onClose }) {
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
+            {selectedProduct && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <ProductDetailScreen
+                        product={selectedProduct}
+                        onClose={() => setSelectedProduct(null)}
+                        onAddToCart={(product) => {
+                            setSelectedProduct(null);
+                        }}
+                    />
+                </View>
+            )}
         </View>
     );
 }
@@ -470,5 +489,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
+    },
+    itemClickable: {
+        flexDirection: 'row',
+        flex: 1,
+        alignItems: 'center',
     },
 });

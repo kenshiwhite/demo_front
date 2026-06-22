@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function ProductDetailScreen({ product, onClose, onAddToCart }) {
+export default function ProductDetailScreen({ product, onClose, onAddToCart, onSupplierPress }) {
     const { addToCart } = useCart();
 
     return (
@@ -53,17 +53,21 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart }) {
                     </Text>
 
                     {/* Supplier */}
-                    <View style={styles.supplierBox}>
+                    <TouchableOpacity
+                        style={styles.supplierBox}
+                        onPress={() => onSupplierPress && onSupplierPress(product.supplier)}
+                    >
                         <View style={styles.supplierAvatar}>
                             <Text style={styles.supplierAvatarText}>
                                 {product.supplier_name?.[0]?.toUpperCase()}
                             </Text>
                         </View>
-                        <View>
+                        <View style={{ flex: 1 }}>
                             <Text style={styles.supplierLabel}>Поставщик</Text>
                             <Text style={styles.supplierName}>{product.supplier_name}</Text>
                         </View>
-                    </View>
+                        <Text style={{ color: '#4F46E5', fontSize: 18 }}>›</Text>
+                    </TouchableOpacity>
 
                     {/* Description */}
                     {product.description ? (

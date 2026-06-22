@@ -15,6 +15,7 @@ import RequestDetailScreen from './RequestDetailScreen';
 import CartScreen from './CartScreen';
 import ProfileScreen from './ProfileScreen';
 import ProductDetailScreen from './ProductDetailScreen';
+import client from '../api/client';
 
 const screenWidth = Dimensions.get('window').width;
 const cardWidth = (screenWidth - 48) / 2;
@@ -547,6 +548,19 @@ export default function ClientHomeScreen() {
                         onAddToCart={(product) => {
                             setSelectedProduct(null);
                             handleAddToCart(product);
+                        }}
+                        onSupplierPress={(supplierId) => {
+                            setSelectedProduct(null);
+                            // find supplier and navigate to their products
+                            const supplier = suppliers.find(s => s.id === supplierId);
+                            if (supplier) {
+                                handleSupplierPress(supplier);
+                            } else {
+                                // fetch supplier if not in list
+                                client.get(`/api/auth/suppliers/${supplierId}/`)
+                                    .then(res => handleSupplierPress(res.data))
+                                    .catch(() => Alert.alert('Ошибка', 'Не удалось загрузить поставщика'));
+                            }
                         }}
                     />
                 </View>
