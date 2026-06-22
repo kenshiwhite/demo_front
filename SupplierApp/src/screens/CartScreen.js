@@ -95,7 +95,20 @@ export default function CartScreen({ onClose }) {
                 >
                     <Text style={styles.qtyBtnText}>−</Text>
                 </TouchableOpacity>
-                <Text style={styles.qtyValue}>{item.quantity}</Text>
+                <TextInput
+                    style={styles.qtyInput}
+                    value={item.quantity.toString()}
+                    onChangeText={(v) => {
+                        const num = parseInt(v);
+                        if (!isNaN(num) && num > 0) {
+                            updateQuantity(supplierId, item.product.id, num);
+                        } else if (v === '') {
+                            updateQuantity(supplierId, item.product.id, 1);
+                        }
+                    }}
+                    keyboardType="numeric"
+                    textAlign="center"
+                />
                 <TouchableOpacity
                     style={styles.qtyBtn}
                     onPress={() => updateQuantity(supplierId, item.product.id, item.quantity + 1)}
@@ -105,7 +118,6 @@ export default function CartScreen({ onClose }) {
             </View>
         </View>
     );
-
     const renderSupplierGroup = ({ item: supplierGroup }) => {
         const supplierId = supplierGroup.supplier.id.toString();
         const total = getSupplierTotal(supplierGroup.items);
@@ -377,6 +389,18 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#eee',
     },
+    qtyInput: {
+        borderWidth: 1,
+        borderColor: '#4F46E5',
+        borderRadius: 6,
+        width: 48,
+        height: 32,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1a1a1a',
+        textAlign: 'center',
+        padding: 0,
+    },
     supplierTotalLabel: { fontSize: 13, color: '#666' },
     supplierTotal: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
     orderBtn: {
@@ -442,4 +466,9 @@ const styles = StyleSheet.create({
     submitBtnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
     cancelButton: { alignItems: 'center', padding: 12 },
     cancelText: { color: '#666', fontSize: 16 },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
 });

@@ -10,7 +10,9 @@ import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
+import ProfileScreen from './ProfileScreen';
 import * as ImagePicker from 'expo-image-picker';
+import AnalyticsScreen from './AnalyticsScreen';
 
 export default function SupplierHomeScreen() {
     const { signOut, user } = useAuth();
@@ -18,6 +20,7 @@ export default function SupplierHomeScreen() {
     const [requests, setRequests] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [requestFilter, setRequestFilter] = useState('active');
     const [responseModal, setResponseModal] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedRequestDetail, setSelectedRequestDetail] = useState(null);
@@ -25,6 +28,7 @@ export default function SupplierHomeScreen() {
     const [offeredPrice, setOfferedPrice] = useState('');
     const [productModal, setProductModal] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
     const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [productForm, setProductForm] = useState({
@@ -35,11 +39,18 @@ export default function SupplierHomeScreen() {
         stock_quantity: '',
         is_available: true,
     });
+    const [showAnalytics, setShowAnalytics] = useState(false);
 
     useEffect(() => {
         if (view === 'requests') loadRequests();
         else loadProducts();
     }, [view]);
+
+    const filteredRequests = requests.filter(r => {
+        if (requestFilter === 'active') return ['pending', 'accepted'].includes(r.status);
+        if (requestFilter === 'history') return ['fulfilled', 'declined'].includes(r.status);
+        return true;
+    });
 
     const loadRequests = async () => {
         setLoading(true);
@@ -238,13 +249,13 @@ export default function SupplierHomeScreen() {
             onPress={() => setSelectedRequestDetail(item)}
         >
             <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{item.product_name}</Text>
+                <Text style={styles.cardTitle}>Заявка #{item.id}</Text>
                 <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
                     <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
                 </View>
             </View>
             <Text style={styles.cardSubtitle}>От: {item.client_name}</Text>
-            <Text style={styles.cardSubtitle}>Количество: {item.quantity}</Text>
+            <Text style={styles.cardSubtitle}>Товаров: {item.items?.length || 0}</Text>
             {item.total_price && (
                 <Text style={styles.cardSubtitle}>
                     Итого: {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
@@ -257,7 +268,7 @@ export default function SupplierHomeScreen() {
             ) : null}
             {item.desired_delivery_date ? (
                 <Text style={styles.cardSubtitle}>
-                    Дата доставки: {new Date(item.desired_delivery_date).toLocaleDateString('ru-RU')}
+                    Дата: {new Date(item.desired_delivery_date).toLocaleDateString('ru-RU')}
                 </Text>
             ) : null}
             {item.note ? (
@@ -267,12 +278,9 @@ export default function SupplierHomeScreen() {
             {item.response && (
                 <View style={styles.responseBox}>
                     <Text style={styles.responseTitle}>Ваш ответ:</Text>
-                    <Text style={styles.responseText}>{item.response.message}</Text>
-                    {item.response.offered_price && (
-                        <Text style={styles.responseText}>
-                            Предложенная цена: {parseInt(item.response.offered_price).toLocaleString('ru-RU')} ₸
-                        </Text>
-                    )}
+                    <Text style={styles.responseText} numberOfLines={2}>
+                        {item.response.message}
+                    </Text>
                 </View>
             )}
 
@@ -349,9 +357,8 @@ export default function SupplierHomeScreen() {
                 <Text style={styles.price}>
                     {parseInt(item.price).toLocaleString('ru-RU')} ₸ / {item.unit}
                 </Text>
-
                 <View style={styles.stockRow}>
-                    <Text style={styles.stockLabel}>Остаток на складе:</Text>
+                    <Text style={styles.stockLabel}>Остаток:</Text>
                     <Text style={[
                         styles.stockValue,
                         isOutOfStock && styles.stockOut,
@@ -361,7 +368,6 @@ export default function SupplierHomeScreen() {
                         {item.stock_quantity} {item.unit}
                     </Text>
                 </View>
-
                 {isOutOfStock && (
                     <View style={styles.stockWarning}>
                         <Text style={styles.stockWarningText}>⚠️ Товар закончился</Text>
@@ -370,11 +376,10 @@ export default function SupplierHomeScreen() {
                 {isLowStock && !isOutOfStock && (
                     <View style={[styles.stockWarning, { backgroundColor: '#FFF8E7' }]}>
                         <Text style={[styles.stockWarningText, { color: '#F59E0B' }]}>
-                            ⚠️ Мало товара на складе
+                            ⚠️ Мало товара
                         </Text>
                     </View>
                 )}
-
                 <View style={styles.actions}>
                     <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: '#4F46E5' }]}
@@ -399,12 +404,15 @@ export default function SupplierHomeScreen() {
                 <Text style={styles.headerTitle}>
                     {user?.company_name || user?.username}
                 </Text>
+                <TouchableOpacity onPress={() => setShowAnalytics(true)}>
+                    <Text style={styles.logout}>📊</Text>
+                </TouchableOpacity>
                 <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => setShowProfile(true)}>
+                        <Text style={styles.logout}>👤</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowNotifications(true)}>
                         <Text style={styles.logout}>🔔</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={signOut}>
-                        <Text style={styles.logout}>Выйти</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -428,17 +436,52 @@ export default function SupplierHomeScreen() {
                 </TouchableOpacity>
             </View>
 
+            {view === 'requests' && (
+                <View style={styles.filterBar}>
+                    <TouchableOpacity
+                        style={[styles.filterBtn, requestFilter === 'active' && styles.filterBtnActive]}
+                        onPress={() => setRequestFilter('active')}
+                    >
+                        <Text style={[styles.filterBtnText, requestFilter === 'active' && styles.filterBtnTextActive]}>
+                            Активные
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterBtn, requestFilter === 'all' && styles.filterBtnActive]}
+                        onPress={() => setRequestFilter('all')}
+                    >
+                        <Text style={[styles.filterBtnText, requestFilter === 'all' && styles.filterBtnTextActive]}>
+                            Все
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterBtn, requestFilter === 'history' && styles.filterBtnActive]}
+                        onPress={() => setRequestFilter('history')}
+                    >
+                        <Text style={[styles.filterBtnText, requestFilter === 'history' && styles.filterBtnTextActive]}>
+                            История
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {loading ? (
                 <ActivityIndicator style={styles.loader} size="large" color="#4F46E5" />
             ) : (
                 <FlatList
-                    data={view === 'requests' ? requests : products}
+                    data={view === 'requests' ? filteredRequests : products}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={view === 'requests' ? renderRequest : renderProduct}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <Text style={styles.empty}>
-                            {view === 'requests' ? 'Заявок пока нет' : 'Товаров пока нет'}
+                            {view === 'requests'
+                                ? requestFilter === 'history'
+                                    ? 'История заявок пуста'
+                                    : requestFilter === 'active'
+                                    ? 'Нет активных заявок'
+                                    : 'Заявок пока нет'
+                                : 'Товаров пока нет'}
                         </Text>
                     }
                 />
@@ -471,7 +514,7 @@ export default function SupplierHomeScreen() {
                             <View style={styles.modalContent}>
                                 <Text style={styles.modalTitle}>Ответить на заявку</Text>
                                 <Text style={styles.modalSubtitle}>
-                                    {selectedRequest?.product_name} — кол-во: {selectedRequest?.quantity}
+                                    Заявка #{selectedRequest?.id} — {selectedRequest?.items?.length || 0} товаров
                                 </Text>
                                 {selectedRequest?.total_price && (
                                     <View style={styles.totalRow}>
@@ -525,7 +568,6 @@ export default function SupplierHomeScreen() {
                             <Text style={styles.modalTitle}>
                                 {editingProduct ? 'Редактировать товар' : 'Добавить товар'}
                             </Text>
-
                             <TouchableOpacity
                                 style={styles.imagePicker}
                                 onPress={handlePickImage}
@@ -546,7 +588,6 @@ export default function SupplierHomeScreen() {
                                     <Text style={styles.imagePickerText}>📷 Добавить фото</Text>
                                 )}
                             </TouchableOpacity>
-
                             <TextInput
                                 style={styles.input}
                                 placeholder="Название товара *"
@@ -604,7 +645,7 @@ export default function SupplierHomeScreen() {
             </Modal>
 
             {selectedRequestDetail && (
-                <View style={StyleSheet.absoluteFill}>
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
                     <RequestDetailScreen
                         request={selectedRequestDetail}
                         onClose={() => setSelectedRequestDetail(null)}
@@ -617,8 +658,20 @@ export default function SupplierHomeScreen() {
             )}
 
             {showNotifications && (
-                <View style={StyleSheet.absoluteFill}>
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
                     <NotificationsScreen onClose={() => setShowNotifications(false)} />
+                </View>
+            )}
+
+            {showProfile && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <ProfileScreen onClose={() => setShowProfile(false)} />
+                </View>
+            )}
+
+            {showAnalytics && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <AnalyticsScreen onClose={() => setShowAnalytics(false)} />
                 </View>
             )}
         </View>
@@ -650,6 +703,24 @@ const styles = StyleSheet.create({
     },
     tabText: { fontSize: 15, color: '#999' },
     tabTextActive: { color: '#4F46E5', fontWeight: '600' },
+    filterBar: {
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        padding: 8,
+        gap: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    filterBtn: {
+        flex: 1,
+        padding: 8,
+        borderRadius: 8,
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+    },
+    filterBtnActive: { backgroundColor: '#4F46E5' },
+    filterBtnText: { fontSize: 13, color: '#666', fontWeight: '600' },
+    filterBtnTextActive: { color: '#fff' },
     list: { padding: 12 },
     loader: { marginTop: 40 },
     empty: { textAlign: 'center', color: '#999', marginTop: 40 },
@@ -810,9 +881,5 @@ const styles = StyleSheet.create({
         marginTop: 6,
         alignItems: 'center',
     },
-    stockWarningText: {
-        fontSize: 13,
-        color: '#EF4444',
-        fontWeight: '600',
-    },
+    stockWarningText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
 });

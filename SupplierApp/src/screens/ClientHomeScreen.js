@@ -13,6 +13,7 @@ import { useCart } from '../context/CartContext';
 import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import CartScreen from './CartScreen';
+import ProfileScreen from './ProfileScreen';
 
 export default function ClientHomeScreen() {
     const { signOut, user } = useAuth();
@@ -27,6 +28,10 @@ export default function ClientHomeScreen() {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showCart, setShowCart] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
+    const [quantityModal, setQuantityModal] = useState(false);
+    const [selectedProductForCart, setSelectedProductForCart] = useState(null);
+    const [cartQuantity, setCartQuantity] = useState('1');
 
     useEffect(() => {
         loadAllProducts();
@@ -89,6 +94,27 @@ export default function ClientHomeScreen() {
         } else {
             loadAllProducts(text);
         }
+    };
+
+    const handleAddToCart = (item) => {
+        setSelectedProductForCart(item);
+        setCartQuantity('1');
+        setQuantityModal(true);
+    };
+
+    const handleConfirmAddToCart = () => {
+        const qty = parseInt(cartQuantity);
+        if (!qty || qty <= 0) {
+            Alert.alert('Ошибка', 'Введите корректное количество');
+            return;
+        }
+        if (qty > selectedProductForCart.stock_quantity) {
+            Alert.alert('Ошибка', `Максимальное количество: ${selectedProductForCart.stock_quantity}`);
+            return;
+        }
+        addToCart(selectedProductForCart, qty);
+        setQuantityModal(false);
+        Alert.alert('Добавлено', `${selectedProductForCart.name} x${qty} добавлен в корзину`);
     };
 
     const handleSupplierPress = (supplier) => {
@@ -165,13 +191,11 @@ export default function ClientHomeScreen() {
             </View>
             <TouchableOpacity
                 style={styles.requestButton}
-                onPress={() => {
-                    addToCart(item);
-                    Alert.alert('Добавлено', `${item.name} добавлен в корзину`);
-                }}
+                onPress={() => handleAddToCart(item)}
             >
                 <Text style={styles.requestButtonText}>В корзину</Text>
             </TouchableOpacity>
+            
         </View>
     );
 
@@ -181,9 +205,7 @@ export default function ClientHomeScreen() {
             onPress={() => setSelectedRequest(item)}
         >
             <View style={styles.requestHeader}>
-                <Text style={styles.requestProduct}>
-                    Заявка #{item.id}
-                </Text>
+                <Text style={styles.requestProduct}>Заявка #{item.id}</Text>
                 <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
                     <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
                 </View>
@@ -235,6 +257,9 @@ export default function ClientHomeScreen() {
                         : 'Все товары'}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => setShowProfile(true)}>
+                        <Text style={styles.logout}>👤</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowCart(true)}>
                         <Text style={styles.logout}>
                             🛒{getTotalItems() > 0 ? ` ${getTotalItems()}` : ''}
@@ -242,9 +267,6 @@ export default function ClientHomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowNotifications(true)}>
                         <Text style={styles.logout}>🔔</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={signOut}>
-                        <Text style={styles.logout}>Выйти</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -364,6 +386,83 @@ export default function ClientHomeScreen() {
                     <NotificationsScreen onClose={() => setShowNotifications(false)} />
                 </View>
             )}
+
+            {showProfile && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <ProfileScreen onClose={() => setShowProfile(false)} />
+                </View>
+            )}
+            {/* Quantity Modal */}
+            <Modal visible={quantityModal} transparent animationType="slide">
+                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+                    <View style={styles.modalOverlay}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        >
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>
+                                    {selectedProductForCart?.name}
+                                </Text>
+                                <Text style={styles.modalSubtitle}>
+                                    {parseInt(selectedProductForCart?.price).toLocaleString('ru-RU')} ₸ / {selectedProductForCart?.unit}
+                                </Text>
+
+                                <View style={styles.qtyRow}>
+                                    <TouchableOpacity
+                                        style={styles.qtyBtn}
+                                        onPress={() => setCartQuantity(q => Math.max(1, parseInt(q || 1) - 1).toString())}
+                                    >
+                                        <Text style={styles.qtyBtnText}>−</Text>
+                                    </TouchableOpacity>
+                                    <TextInput
+                                        style={styles.qtyInput}
+                                        value={cartQuantity}
+                                        onChangeText={setCartQuantity}
+                                        keyboardType="numeric"
+                                        textAlign="center"
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.qtyBtn}
+                                        onPress={() => setCartQuantity(q => {
+                                            const next = parseInt(q || 0) + 1;
+                                            if (next > selectedProductForCart?.stock_quantity) return q;
+                                            return next.toString();
+                                        })}
+                                    >
+                                        <Text style={styles.qtyBtnText}>+</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {cartQuantity ? (
+                                    <View style={styles.totalBox}>
+                                        <Text style={styles.totalLabel}>Итого:</Text>
+                                        <Text style={styles.totalValue}>
+                                            {(parseFloat(selectedProductForCart?.price) * parseInt(cartQuantity || 0)).toLocaleString('ru-RU')} ₸
+                                        </Text>
+                                    </View>
+                                ) : null}
+
+                                <TouchableOpacity
+                                    style={styles.button}
+                                    onPress={handleConfirmAddToCart}
+                                >
+                                    <Text style={styles.buttonText}>Добавить в корзину</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        Keyboard.dismiss();
+                                        setQuantityModal(false);
+                                    }}
+                                >
+                                    <Text style={styles.cancelText}>Отмена</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </KeyboardAvoidingView>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
         </View>
     );
 }
@@ -517,5 +616,138 @@ const styles = StyleSheet.create({
         color: '#4F46E5',
         marginTop: 10,
         textAlign: 'right',
+    },
+    qtyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        marginBottom: 16,
+    },
+    qtyBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#4F46E5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    qtyBtnText: {
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: '600',
+        lineHeight: 26,
+    },
+    qtyInput: {
+        borderWidth: 2,
+        borderColor: '#4F46E5',
+        borderRadius: 8,
+        width: 80,
+        height: 48,
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1a1a1a',
+        textAlign: 'center',
+    },
+    stockHint: {
+        textAlign: 'center',
+        color: '#999',
+        fontSize: 13,
+        marginBottom: 16,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+    },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
+    modalSubtitle: { fontSize: 14, color: '#4F46E5', marginBottom: 20 },
+    totalBox: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#f0f4ff',
+        padding: 14,
+        borderRadius: 8,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#4F46E5',
+    },
+    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+    },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
+    modalSubtitle: { fontSize: 14, color: '#4F46E5', marginBottom: 20 },
+    button: {
+        backgroundColor: '#4F46E5',
+        padding: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+    cancelButton: { alignItems: 'center', padding: 12 },
+    cancelText: { color: '#666', fontSize: 16 },
+    totalBox: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#f0f4ff',
+        padding: 14,
+        borderRadius: 8,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#4F46E5',
+    },
+    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
+    stockHint: {
+        textAlign: 'center',
+        color: '#999',
+        fontSize: 13,
+        marginBottom: 16,
+    },
+    qtyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        marginBottom: 16,
+    },
+    qtyBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#4F46E5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    qtyBtnText: {
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: '600',
+        lineHeight: 26,
+    },
+    qtyInput: {
+        borderWidth: 2,
+        borderColor: '#4F46E5',
+        borderRadius: 8,
+        width: 80,
+        height: 48,
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1a1a1a',
+        textAlign: 'center',
     },
 });

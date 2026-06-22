@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, Alert, TextInput,
-    KeyboardAvoidingView, Platform, Keyboard,
-    TouchableWithoutFeedback
+    StyleSheet, Alert, TextInput, Image
 } from 'react-native';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +13,6 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
 
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
-        quantity: request.quantity.toString(),
         note: request.note || '',
         delivery_address: request.delivery_address || '',
         desired_delivery_date: request.desired_delivery_date || '',
@@ -49,7 +46,6 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
         }
         try {
             await client.patch(`/api/requests/${request.id}/`, {
-                quantity: parseInt(form.quantity),
                 note: form.note,
                 delivery_address: form.delivery_address,
                 desired_delivery_date: form.desired_delivery_date || null,
@@ -62,6 +58,11 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
             Alert.alert('Ошибка', 'Не удалось обновить заявку');
         }
     };
+
+    const items = request.items || [];
+    const totalPrice = request.total_price
+        ? parseInt(request.total_price).toLocaleString('ru-RU')
+        : items.reduce((t, i) => t + parseFloat(i.price_at_request || 0) * i.quantity, 0).toLocaleString('ru-RU');
 
     return (
         <View style={styles.container}>
@@ -80,6 +81,9 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                         <Text style={styles.editBtn}>Сохранить</Text>
                     </TouchableOpacity>
                 )}
+                {!isEditable && !editing && (
+                    <View style={{ width: 60 }} />
+                )}
             </View>
 
             <ScrollView style={styles.body}>
@@ -91,34 +95,55 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                     </View>
                 </View>
 
-                {/* Product info */}
+                {/* Supplier info */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Информация о товаре</Text>
+                    <Text style={styles.sectionTitle}>Поставщик</Text>
                     <View style={styles.row}>
-                        <Text style={styles.label}>Товар:</Text>
-                        <Text style={styles.value}>{request.product_name}</Text>
+                        <Text style={styles.label}>Компания:</Text>
+                        <Text style={styles.value}>
+                            {request.supplier_name || '—'}
+                        </Text>
                     </View>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Количество:</Text>
-                        {editing ? (
-                            <TextInput
-                                style={styles.inlineInput}
-                                value={form.quantity}
-                                onChangeText={(v) => setForm(p => ({ ...p, quantity: v }))}
-                                keyboardType="numeric"
-                            />
-                        ) : (
-                            <Text style={styles.value}>{request.quantity}</Text>
-                        )}
-                    </View>
-                    {request.total_price && (
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Итого:</Text>
-                            <Text style={[styles.value, styles.totalPrice]}>
-                                {parseInt(request.total_price).toLocaleString('ru-RU')} ₸
-                            </Text>
-                        </View>
+                </View>
+
+                {/* Items */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Товары</Text>
+                    {items.length === 0 ? (
+                        <Text style={styles.emptyText}>Нет товаров</Text>
+                    ) : (
+                        items.map((item) => (
+                            <View key={item.id} style={styles.itemRow}>
+                                {item.product_image ? (
+                                    <Image
+                                        source={{ uri: item.product_image }}
+                                        style={styles.itemImage}
+                                        resizeMode="cover"
+                                    />
+                                ) : (
+                                    <View style={styles.itemImagePlaceholder}>
+                                        <Text style={styles.placeholderText}>Нет фото</Text>
+                                    </View>
+                                )}
+                                <View style={styles.itemInfo}>
+                                    <Text style={styles.itemName}>{item.product_name}</Text>
+                                    <Text style={styles.itemDetail}>
+                                        {parseInt(item.price_at_request).toLocaleString('ru-RU')} ₸ / {item.product_unit}
+                                    </Text>
+                                    <Text style={styles.itemDetail}>
+                                        Кол-во: {item.quantity} {item.product_unit}
+                                    </Text>
+                                    <Text style={styles.itemTotal}>
+                                        Итого: {parseInt(item.total).toLocaleString('ru-RU')} ₸
+                                    </Text>
+                                </View>
+                            </View>
+                        ))
                     )}
+                    <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>Общая сумма:</Text>
+                        <Text style={styles.totalValue}>{totalPrice} ₸</Text>
+                    </View>
                 </View>
 
                 {/* Client info */}
@@ -126,7 +151,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                     <Text style={styles.sectionTitle}>Информация о клиенте</Text>
                     <View style={styles.row}>
                         <Text style={styles.label}>Клиент:</Text>
-                        <Text style={styles.value}>{request.client_name}</Text>
+                        <Text style={styles.value}>{request.client_name || '—'}</Text>
                     </View>
                     {request.client_company ? (
                         <View style={styles.row}>
@@ -142,6 +167,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                                 value={form.contact_phone}
                                 onChangeText={(v) => setForm(p => ({ ...p, contact_phone: v }))}
                                 keyboardType="phone-pad"
+                                placeholder="Введите телефон"
                             />
                         ) : (
                             <Text style={styles.value}>
@@ -153,7 +179,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
 
                 {/* Delivery info */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Информация о доставке</Text>
+                    <Text style={styles.sectionTitle}>Доставка</Text>
                     <View style={styles.row}>
                         <Text style={styles.label}>Адрес:</Text>
                         {editing ? (
@@ -162,6 +188,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                                 value={form.delivery_address}
                                 onChangeText={(v) => setForm(p => ({ ...p, delivery_address: v }))}
                                 multiline
+                                placeholder="Введите адрес"
                             />
                         ) : (
                             <Text style={[styles.value, { flex: 1, textAlign: 'right' }]}>
@@ -253,6 +280,8 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                         <Text style={styles.cancelEditText}>Отмена</Text>
                     </TouchableOpacity>
                 )}
+
+                <View style={{ height: 40 }} />
             </ScrollView>
         </View>
     );
@@ -295,7 +324,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     sectionTitle: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700',
         color: '#4F46E5',
         marginBottom: 12,
@@ -312,7 +341,44 @@ const styles = StyleSheet.create({
     },
     label: { fontSize: 14, color: '#666' },
     value: { fontSize: 14, color: '#1a1a1a', fontWeight: '500' },
-    totalPrice: { color: '#4F46E5', fontWeight: '700', fontSize: 16 },
+    emptyText: { fontSize: 14, color: '#999', textAlign: 'center', paddingVertical: 12 },
+    itemRow: {
+        flexDirection: 'row',
+        paddingVertical: 10,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#f0f0f0',
+    },
+    itemImage: {
+        width: 56,
+        height: 56,
+        borderRadius: 8,
+        marginRight: 12,
+    },
+    itemImagePlaceholder: {
+        width: 56,
+        height: 56,
+        borderRadius: 8,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    placeholderText: { fontSize: 10, color: '#999' },
+    itemInfo: { flex: 1 },
+    itemName: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+    itemDetail: { fontSize: 12, color: '#666', marginTop: 2 },
+    itemTotal: { fontSize: 13, fontWeight: '600', color: '#4F46E5', marginTop: 4 },
+    totalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
+    },
+    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+    totalValue: { fontSize: 18, fontWeight: 'bold', color: '#4F46E5' },
     noteText: { fontSize: 14, color: '#444', lineHeight: 20 },
     responseText: {
         fontSize: 14,
@@ -337,7 +403,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ddd',
         alignItems: 'center',
-        marginBottom: 40,
     },
     cancelEditText: { color: '#666', fontSize: 16 },
 });
