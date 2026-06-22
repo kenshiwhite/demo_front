@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, TextInput, ActivityIndicator,
@@ -339,15 +340,15 @@ export default function ClientHomeScreen() {
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                     <TouchableOpacity onPress={() => setShowProfile(true)}>
-                        <Text style={styles.logout}>👤</Text>
+                        <Ionicons name="person-outline" size={24} color="white" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowCart(true)}>
                         <Text style={styles.logout}>
-                            🛒{getTotalItems() > 0 ? ` ${getTotalItems()}` : ''}
+                            <Ionicons name="cart-outline" size={24} color="white"/>{getTotalItems() > 0 ? ` ${getTotalItems()}` : ''}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowNotifications(true)}>
-                        <Text style={styles.logout}>🔔</Text>
+                        <Ionicons name="notifications-outline" size={24} color="white" />
                     </TouchableOpacity>
                 </View>
             </View>

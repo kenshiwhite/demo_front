@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     summaryTotal: { fontSize: 15, fontWeight: 'bold', color: '#4F46E5' },
     input: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: '#c4c4c4',
         borderRadius: 8,
         padding: 12,
         marginBottom: 12,

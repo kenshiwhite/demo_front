@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, ActivityIndicator, Alert,
@@ -404,15 +405,15 @@ export default function SupplierHomeScreen() {
                 <Text style={styles.headerTitle}>
                     {user?.company_name || user?.username}
                 </Text>
-                <TouchableOpacity onPress={() => setShowAnalytics(true)}>
-                    <Text style={styles.logout}>📊</Text>
-                </TouchableOpacity>
                 <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                     <TouchableOpacity onPress={() => setShowProfile(true)}>
-                        <Text style={styles.logout}>👤</Text>
+                        <Ionicons name="person-outline" size={24} color="white" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowAnalytics(true)}>
+                        <Ionicons name="bar-chart-outline" size={24} color="white" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowNotifications(true)}>
-                        <Text style={styles.logout}>🔔</Text>
+                        <Ionicons name="notifications-outline" size={24} color="white" />
                     </TouchableOpacity>
                 </View>
             </View>
