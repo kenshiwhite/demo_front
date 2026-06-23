@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import Icon from '../components/Icon';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
-import { Button, InputField } from '../components/UI';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, TextInput, ActivityIndicator,
@@ -19,6 +15,9 @@ import RequestDetailScreen from './RequestDetailScreen';
 import CartScreen from './CartScreen';
 import ProfileScreen from './ProfileScreen';
 import ProductDetailScreen from './ProductDetailScreen';
+import { InputField, Button } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import Icon from '../components/Icon';
 import client from '../api/client';
 
 const screenWidth = Dimensions.get('window').width;
@@ -28,7 +27,7 @@ export default function ClientHomeScreen() {
     const { signOut, user } = useAuth();
     const { addToCart, getTotalItems } = useCart();
     const [view, setView] = useState('all');
-    const [displayMode, setDisplayMode] = useState('grid'); // grid | list
+    const [displayMode, setDisplayMode] = useState('grid');
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
     const [myRequests, setMyRequests] = useState([]);
@@ -132,56 +131,66 @@ export default function ClientHomeScreen() {
         }
         addToCart(selectedProductForCart, qty);
         setQuantityModal(false);
-        Alert.alert('Добавлено', `${selectedProductForCart.name} x${qty} добавлен в корзину`);
+        Alert.alert('Добавлено в корзину', `${selectedProductForCart.name} × ${qty}`);
     };
 
-    const getStatusColor = (status) => {
-        const colors = {
-            pending: '#F59E0B',
-            accepted: '#10B981',
-            declined: '#EF4444',
-            fulfilled: '#6366F1',
+    const getStatusConfig = (status) => {
+        const configs = {
+            pending: { label: 'Ожидает', color: colors.warning, bg: '#FEF3C7', icon: 'clock' },
+            accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
+            declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
+            fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
         };
-        return colors[status] || '#999';
-    };
-
-    const getStatusText = (status) => {
-        const texts = {
-            pending: 'Ожидает',
-            accepted: 'Принято',
-            declined: 'Отклонено',
-            fulfilled: 'Выполнено',
-        };
-        return texts[status] || status;
+        return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };
 
     const renderSupplierHeader = () => {
         if (!selectedSupplier) return null;
         return (
-            <View style={styles.supplierHeader}>
-                <View style={styles.supplierHeaderAvatar}>
-                    <Text style={styles.supplierHeaderAvatarText}>
-                        {selectedSupplier.company_name?.[0] ||
-                         selectedSupplier.username?.[0]?.toUpperCase()}
-                    </Text>
+            <View style={styles.supplierProfileCard}>
+                <View style={styles.supplierProfileTop}>
+                    <View style={styles.supplierProfileAvatar}>
+                        <Text style={styles.supplierProfileAvatarText}>
+                            {selectedSupplier.company_name?.[0] ||
+                             selectedSupplier.username?.[0]?.toUpperCase()}
+                        </Text>
+                    </View>
+                    <View style={styles.supplierProfileInfo}>
+                        <Text style={styles.supplierProfileName}>
+                            {selectedSupplier.company_name || selectedSupplier.username}
+                        </Text>
+                        <View style={styles.supplierProfileBadge}>
+                            <Icon name="package" size={11} color={colors.primary} />
+                            <Text style={styles.supplierProfileBadgeText}>
+                                {selectedSupplier.product_count} товаров
+                            </Text>
+                        </View>
+                    </View>
                 </View>
-                <View style={styles.supplierHeaderInfo}>
-                    <Text style={styles.supplierHeaderName}>
-                        {selectedSupplier.company_name || selectedSupplier.username}
+
+                {selectedSupplier.description ? (
+                    <Text style={styles.supplierProfileDesc}>
+                        {selectedSupplier.description}
                     </Text>
-                    {selectedSupplier.description ? (
-                        <Text style={styles.supplierHeaderDesc} numberOfLines={2}>
-                            {selectedSupplier.description}
-                        </Text>
-                    ) : null}
+                ) : null}
+
+                <View style={styles.supplierProfileContacts}>
                     {selectedSupplier.phone ? (
-                        <Text style={styles.supplierHeaderPhone}>
-                            📞 {selectedSupplier.phone}
-                        </Text>
+                        <View style={styles.supplierContactItem}>
+                            <View style={styles.supplierContactIcon}>
+                                <Icon name="phone" size={13} color={colors.primary} />
+                            </View>
+                            <Text style={styles.supplierContactText}>{selectedSupplier.phone}</Text>
+                        </View>
                     ) : null}
-                    <Text style={styles.supplierHeaderProducts}>
-                        {selectedSupplier.product_count} товаров
-                    </Text>
+                    <View style={styles.supplierContactItem}>
+                        <View style={styles.supplierContactIcon}>
+                            <Icon name="layers" size={13} color={colors.primary} />
+                        </View>
+                        <Text style={styles.supplierContactText}>
+                            {selectedSupplier.product_count} товаров в каталоге
+                        </Text>
+                    </View>
                 </View>
             </View>
         );
@@ -189,36 +198,42 @@ export default function ClientHomeScreen() {
 
     const renderSupplier = ({ item }) => (
         <TouchableOpacity
-            style={styles.card}
+            style={styles.supplierCard}
             onPress={() => handleSupplierPress(item)}
+            activeOpacity={0.7}
         >
-            <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
+            <View style={styles.supplierAvatar}>
+                <Text style={styles.supplierAvatarText}>
                     {item.company_name?.[0] || item.username[0].toUpperCase()}
                 </Text>
             </View>
-            <View style={styles.cardInfo}>
-                <Text style={styles.cardTitle}>
+            <View style={styles.supplierInfo}>
+                <Text style={styles.supplierName}>
                     {item.company_name || item.username}
                 </Text>
                 {item.description ? (
-                    <Text style={styles.cardDesc} numberOfLines={1}>
+                    <Text style={styles.supplierDesc} numberOfLines={1}>
                         {item.description}
                     </Text>
                 ) : null}
-                <Text style={styles.cardSubtitle}>
-                    {item.product_count} товаров доступно
-                </Text>
+                <View style={styles.supplierMeta}>
+                    <Icon name="package" size={12} color={colors.textTertiary} />
+                    <Text style={styles.supplierMetaText}>
+                        {item.product_count} товаров
+                    </Text>
+                </View>
             </View>
-            <Text style={styles.arrow}>›</Text>
+            <View style={styles.supplierChevron}>
+                <Icon name="chevronRight" size={18} color={colors.textTertiary} />
+            </View>
         </TouchableOpacity>
     );
 
-    // GRID product card (small, 2 per row)
     const renderGridProduct = ({ item }) => (
         <TouchableOpacity
             style={styles.gridCard}
             onPress={() => setSelectedProduct(item)}
+            activeOpacity={0.7}
         >
             {item.image ? (
                 <Image
@@ -228,128 +243,176 @@ export default function ClientHomeScreen() {
                 />
             ) : (
                 <View style={styles.gridImagePlaceholder}>
-                    <Text style={styles.placeholderText}>Нет фото</Text>
+                    <Icon name="image" size={24} color={colors.textTertiary} />
                 </View>
             )}
-            <View style={styles.gridInfo}>
+            <View style={styles.gridBody}>
                 <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
-                <Text style={styles.gridSupplier} numberOfLines={1}>
-                    {item.supplier_name}
-                </Text>
+                <View style={styles.gridSupplierRow}>
+                    <Icon name="store" size={11} color={colors.primary} />
+                    <Text style={styles.gridSupplier} numberOfLines={1}>{item.supplier_name}</Text>
+                </View>
                 <Text style={styles.gridPrice}>
                     {parseInt(item.price).toLocaleString('ru-RU')} ₸
                 </Text>
-                <Text style={styles.gridUnit}>/{item.unit}</Text>
+                <Text style={styles.gridUnit}>/ {item.unit}</Text>
             </View>
             <TouchableOpacity
                 style={styles.gridCartBtn}
                 onPress={() => handleAddToCart(item)}
+                activeOpacity={0.8}
             >
-                <Text style={styles.gridCartBtnText}>+ В корзину</Text>
+                <Icon name="plus" size={14} color="#fff" />
+                <Text style={styles.gridCartBtnText}>В корзину</Text>
             </TouchableOpacity>
         </TouchableOpacity>
     );
 
-    // LIST product card (big, 1 per row)
     const renderListProduct = ({ item }) => (
         <TouchableOpacity
-            style={styles.productCard}
+            style={styles.listCard}
             onPress={() => setSelectedProduct(item)}
+            activeOpacity={0.7}
         >
             {item.image ? (
                 <Image
                     source={{ uri: item.image }}
-                    style={styles.productImage}
+                    style={styles.listImage}
                     resizeMode="cover"
                 />
             ) : (
-                <View style={styles.productImagePlaceholder}>
-                    <Text style={styles.placeholderText}>Нет фото</Text>
+                <View style={styles.listImagePlaceholder}>
+                    <Icon name="image" size={28} color={colors.textTertiary} />
                 </View>
             )}
-            <View style={styles.productInfo}>
-                <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.supplierName}>От: {item.supplier_name}</Text>
-                <Text style={styles.productDesc} numberOfLines={2}>
-                    {item.description}
-                </Text>
-                <Text style={styles.productPrice}>
-                    {parseInt(item.price).toLocaleString('ru-RU')} ₸ / {item.unit}
-                </Text>
+            <View style={styles.listBody}>
+                <Text style={styles.listName}>{item.name}</Text>
+                <View style={styles.listSupplierRow}>
+                    <Icon name="store" size={12} color={colors.primary} />
+                    <Text style={styles.listSupplier}>{item.supplier_name}</Text>
+                </View>
+                {item.description ? (
+                    <Text style={styles.listDesc} numberOfLines={2}>{item.description}</Text>
+                ) : null}
+                <View style={styles.listBottom}>
+                    <View>
+                        <Text style={styles.listPrice}>
+                            {parseInt(item.price).toLocaleString('ru-RU')} ₸
+                        </Text>
+                        <Text style={styles.listUnit}>/ {item.unit}</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.listCartBtn}
+                        onPress={() => handleAddToCart(item)}
+                        activeOpacity={0.8}
+                    >
+                        <Icon name="cart" size={14} color="#fff" />
+                        <Text style={styles.listCartBtnText}>В корзину</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <TouchableOpacity
-                style={styles.requestButton}
-                onPress={() => handleAddToCart(item)}
-            >
-                <Text style={styles.requestButtonText}>В корзину</Text>
-            </TouchableOpacity>
         </TouchableOpacity>
     );
 
-    const renderRequest = ({ item }) => (
-        <TouchableOpacity
-            style={styles.requestCard}
-            onPress={() => setSelectedRequest(item)}
-        >
-            <View style={styles.requestHeader}>
-                <Text style={styles.requestProduct}>Заявка #{item.id}</Text>
-                <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
+    const renderRequest = ({ item }) => {
+        const statusConfig = getStatusConfig(item.status);
+        return (
+            <TouchableOpacity
+                style={styles.requestCard}
+                onPress={() => setSelectedRequest(item)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.requestTop}>
+                    <View style={styles.requestTitleRow}>
+                        <Text style={styles.requestTitle}>Заявка #{item.id}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+                            <Icon name={statusConfig.icon} size={11} color={statusConfig.color} />
+                            <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                                {statusConfig.label}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.requestMetaRow}>
+                        <Icon name="building" size={13} color={colors.textTertiary} />
+                        <Text style={styles.requestMetaText}>{item.supplier_name}</Text>
+                    </View>
+                    <View style={styles.requestMetaRow}>
+                        <Icon name="package" size={13} color={colors.textTertiary} />
+                        <Text style={styles.requestMetaText}>{item.items?.length || 0} товар(ов)</Text>
+                    </View>
+                    {item.total_price && (
+                        <Text style={styles.requestTotal}>
+                            {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
+                        </Text>
+                    )}
+                    {item.delivery_address ? (
+                        <View style={styles.requestMetaRow}>
+                            <Icon name="map_pin" size={13} color={colors.textTertiary} />
+                            <Text style={styles.requestMetaText} numberOfLines={1}>
+                                {item.delivery_address}
+                            </Text>
+                        </View>
+                    ) : null}
                 </View>
-            </View>
-            <Text style={styles.requestDetail}>Поставщик: {item.supplier_name}</Text>
-            <Text style={styles.requestDetail}>Товаров: {item.items?.length || 0}</Text>
-            {item.total_price && (
-                <Text style={styles.requestDetail}>
-                    Итого: {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
-                </Text>
-            )}
-            {item.delivery_address ? (
-                <Text style={styles.requestDetail} numberOfLines={1}>
-                    Адрес: {item.delivery_address}
-                </Text>
-            ) : null}
-            <Text style={styles.requestDate}>
-                {new Date(item.created_at).toLocaleDateString('ru-RU')}
-            </Text>
-            {item.status === 'pending' && (
-                <View style={styles.pendingBox}>
-                    <Text style={styles.pendingText}>⏳ Ожидаем ответа поставщика</Text>
+
+                {item.status === 'pending' && (
+                    <View style={styles.pendingBanner}>
+                        <Icon name="clock" size={13} color={colors.warning} />
+                        <Text style={styles.pendingText}>Ожидаем ответа поставщика</Text>
+                    </View>
+                )}
+
+                {item.response && (
+                    <View style={styles.responseBanner}>
+                        <Icon name="check" size={13} color={colors.success} />
+                        <Text style={styles.responsePreviewText} numberOfLines={1}>
+                            {item.response.message}
+                        </Text>
+                    </View>
+                )}
+
+                <View style={styles.requestFooter}>
+                    <View style={styles.requestDateRow}>
+                        <Icon name="clock" size={12} color={colors.textTertiary} />
+                        <Text style={styles.requestDate}>
+                            {new Date(item.created_at).toLocaleDateString('ru-RU')}
+                        </Text>
+                    </View>
+                    <View style={styles.detailsLink}>
+                        <Text style={styles.detailsLinkText}>Подробнее</Text>
+                        <Icon name="chevronRight" size={14} color={colors.primary} />
+                    </View>
                 </View>
-            )}
-            {item.response && (
-                <View style={styles.responseBox}>
-                    <Text style={styles.responseTitle}>Ответ поставщика:</Text>
-                    <Text style={styles.responseText} numberOfLines={2}>
-                        {item.response.message}
-                    </Text>
-                </View>
-            )}
-            <Text style={styles.tapHint}>Нажмите для подробностей →</Text>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     const isProductView = view === 'all' || view === 'products';
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>
-                    {view === 'products' && selectedSupplier
-                        ? selectedSupplier.company_name || selectedSupplier.username
-                        : view === 'suppliers' ? 'Поставщики'
-                        : view === 'requests' ? 'Мои заявки'
-                        : 'Все товары'}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                <View>
+                    <Text style={styles.headerGreeting}>Добро пожаловать</Text>
+                    <Text style={styles.headerTitle} numberOfLines={1}>
+                        {view === 'products' && selectedSupplier
+                            ? selectedSupplier.company_name || selectedSupplier.username
+                            : view === 'suppliers' ? 'Поставщики'
+                            : view === 'requests' ? 'Мои заявки'
+                            : 'Все товары'}
+                    </Text>
+                </View>
+                <View style={styles.headerActions}>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
                         <Icon name="user" size={18} color="#fff" />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCart(true)}>
                         <Icon name="cart" size={18} color="#fff" />
                         {getTotalItems() > 0 && (
-                            <View style={styles.cartBadge}>
-                                <Text style={styles.cartBadgeText}>{getTotalItems()}</Text>
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>{getTotalItems()}</Text>
                             </View>
                         )}
                     </TouchableOpacity>
@@ -359,83 +422,107 @@ export default function ClientHomeScreen() {
                 </View>
             </View>
 
+            {/* Tabs */}
             <View style={styles.tabs}>
-                <TouchableOpacity
-                    style={[styles.tab, view === 'all' && styles.tabActive]}
-                    onPress={() => {
-                        setView('all');
-                        setSearch('');
-                        setSelectedSupplier(null);
-                        loadAllProducts();
-                    }}
-                >
-                    <Text style={[styles.tabText, view === 'all' && styles.tabTextActive]}>
-                        Товары
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, (view === 'suppliers' || view === 'products') && styles.tabActive]}
-                    onPress={() => {
-                        setView('suppliers');
-                        setSearch('');
-                        setSelectedSupplier(null);
-                    }}
-                >
-                    <Text style={[styles.tabText, (view === 'suppliers' || view === 'products') && styles.tabTextActive]}>
-                        Поставщики
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, view === 'requests' && styles.tabActive]}
-                    onPress={() => setView('requests')}
-                >
-                    <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>
-                        Мои заявки
-                    </Text>
-                </TouchableOpacity>
+                {[
+                    { key: 'all', label: 'Товары', icon: 'layers' },
+                    { key: 'suppliers', label: 'Поставщики', icon: 'store' },
+                    { key: 'requests', label: 'Мои заявки', icon: 'package' },
+                ].map(tab => {
+                    const isActive = view === tab.key ||
+                        (tab.key === 'suppliers' && view === 'products');
+                    return (
+                        <TouchableOpacity
+                            key={tab.key}
+                            style={[styles.tab, isActive && styles.tabActive]}
+                            onPress={() => {
+                                if (tab.key === 'all') {
+                                    setView('all');
+                                    setSearch('');
+                                    setSelectedSupplier(null);
+                                    loadAllProducts();
+                                } else if (tab.key === 'suppliers') {
+                                    setView('suppliers');
+                                    setSearch('');
+                                    setSelectedSupplier(null);
+                                } else {
+                                    setView(tab.key);
+                                }
+                            }}
+                        >
+                            <Icon
+                                name={tab.icon}
+                                size={15}
+                                color={isActive ? colors.primary : colors.textTertiary}
+                            />
+                            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                                {tab.label}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
+            {/* Back button */}
             {view === 'products' && (
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => {
-                        setView('suppliers');
-                        setSearch('');
-                    }}
+                    onPress={() => { setView('suppliers'); setSearch(''); }}
                 >
-                    <Text style={styles.backText}>← Назад к поставщикам</Text>
+                    <Icon name="chevronLeft" size={16} color={colors.primary} />
+                    <Text style={styles.backText}>Все поставщики</Text>
                 </TouchableOpacity>
             )}
 
+            {/* Supplier mini profile */}
             {view === 'products' && renderSupplierHeader()}
 
+            {/* Search + toggle */}
             {isProductView && (
                 <View style={styles.searchRow}>
-                    <TextInput
-                        style={styles.search}
-                        placeholder={view === 'all' ? 'Поиск по всем товарам...' : 'Поиск товаров...'}
-                        value={search}
-                        onChangeText={handleSearch}
-                    />
+                    <View style={styles.searchBox}>
+                        <Icon name="search" size={16} color={colors.textTertiary} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder={view === 'all' ? 'Поиск по всем товарам...' : 'Поиск товаров...'}
+                            placeholderTextColor={colors.placeholder}
+                            value={search}
+                            onChangeText={handleSearch}
+                        />
+                    </View>
                     <TouchableOpacity
                         style={styles.toggleBtn}
                         onPress={() => setDisplayMode(d => d === 'grid' ? 'list' : 'grid')}
                     >
-                        <Icon name={displayMode === 'grid' ? 'list' : 'grid'} size={18} color={colors.primary} />
+                        <Icon
+                            name={displayMode === 'grid' ? 'list' : 'grid'}
+                            size={18}
+                            color={colors.primary}
+                        />
                     </TouchableOpacity>
                 </View>
             )}
 
+            {/* Content */}
             {loading ? (
-                <ActivityIndicator style={styles.loader} size="large" color="#4F46E5" />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
             ) : view === 'suppliers' ? (
                 <FlatList
                     data={suppliers}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderSupplier}
                     contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>Поставщики не найдены</Text>
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconBox}>
+                                <Icon name="store" size={32} color={colors.textTertiary} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Поставщики не найдены</Text>
+                            <Text style={styles.emptySubtitle}>Попробуйте позже</Text>
+                        </View>
                     }
                 />
             ) : view === 'requests' ? (
@@ -444,8 +531,17 @@ export default function ClientHomeScreen() {
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderRequest}
                     contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>Заявок пока нет</Text>
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconBox}>
+                                <Icon name="package" size={32} color={colors.textTertiary} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Заявок пока нет</Text>
+                            <Text style={styles.emptySubtitle}>
+                                Добавьте товары в корзину и оформите заявку
+                            </Text>
+                        </View>
                     }
                 />
             ) : displayMode === 'grid' ? (
@@ -457,8 +553,15 @@ export default function ClientHomeScreen() {
                     numColumns={2}
                     columnWrapperStyle={styles.gridRow}
                     contentContainerStyle={styles.gridList}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>Товары не найдены</Text>
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconBox}>
+                                <Icon name="layers" size={32} color={colors.textTertiary} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Товары не найдены</Text>
+                            <Text style={styles.emptySubtitle}>Попробуйте изменить поисковый запрос</Text>
+                        </View>
                     }
                 />
             ) : (
@@ -468,8 +571,14 @@ export default function ClientHomeScreen() {
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderListProduct}
                     contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>Товары не найдены</Text>
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconBox}>
+                                <Icon name="layers" size={32} color={colors.textTertiary} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Товары не найдены</Text>
+                        </View>
                     }
                 />
             )}
@@ -482,18 +591,49 @@ export default function ClientHomeScreen() {
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
                             <View style={styles.modalContent}>
+                                <View style={styles.modalHandle} />
+
+                                {selectedProductForCart?.image ? (
+                                    <Image
+                                        source={{ uri: selectedProductForCart.image }}
+                                        style={styles.modalProductImage}
+                                        resizeMode="cover"
+                                    />
+                                ) : null}
+
                                 <Text style={styles.modalTitle}>
                                     {selectedProductForCart?.name}
                                 </Text>
-                                <Text style={styles.modalSubtitle}>
-                                    {parseInt(selectedProductForCart?.price).toLocaleString('ru-RU')} ₸ / {selectedProductForCart?.unit}
-                                </Text>
+                                <View style={styles.modalSupplierRow}>
+                                    <Icon name="store" size={13} color={colors.primary} />
+                                    <Text style={styles.modalSupplierText}>
+                                        {selectedProductForCart?.supplier_name}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.priceInfoBox}>
+                                    <View style={styles.priceInfoItem}>
+                                        <Text style={styles.priceInfoLabel}>Цена за единицу</Text>
+                                        <Text style={styles.priceInfoValue}>
+                                            {parseInt(selectedProductForCart?.price || 0).toLocaleString('ru-RU')} ₸ / {selectedProductForCart?.unit}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.priceInfoDivider} />
+                                    <View style={styles.priceInfoItem}>
+                                        <Text style={styles.priceInfoLabel}>Доступно</Text>
+                                        <Text style={styles.priceInfoValue}>
+                                            {selectedProductForCart?.stock_quantity} {selectedProductForCart?.unit}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.qtyLabel}>Количество</Text>
                                 <View style={styles.qtyRow}>
                                     <TouchableOpacity
                                         style={styles.qtyBtn}
                                         onPress={() => setCartQuantity(q => Math.max(1, parseInt(q || 1) - 1).toString())}
                                     >
-                                        <Text style={styles.qtyBtnText}>−</Text>
+                                        <Icon name="minus" size={16} color={colors.primary} />
                                     </TouchableOpacity>
                                     <TextInput
                                         style={styles.qtyInput}
@@ -510,38 +650,37 @@ export default function ClientHomeScreen() {
                                             return next.toString();
                                         })}
                                     >
-                                        <Text style={styles.qtyBtnText}>+</Text>
+                                        <Icon name="plus" size={16} color={colors.primary} />
                                     </TouchableOpacity>
                                 </View>
-                                {cartQuantity ? (
+
+                                {cartQuantity && parseInt(cartQuantity) > 0 ? (
                                     <View style={styles.totalBox}>
-                                        <Text style={styles.totalLabel}>Итого:</Text>
+                                        <Text style={styles.totalLabel}>Итого</Text>
                                         <Text style={styles.totalValue}>
-                                            {(parseFloat(selectedProductForCart?.price) * parseInt(cartQuantity || 0)).toLocaleString('ru-RU')} ₸
+                                            {(parseFloat(selectedProductForCart?.price || 0) * parseInt(cartQuantity || 0)).toLocaleString('ru-RU')} ₸
                                         </Text>
                                     </View>
                                 ) : null}
-                                <TouchableOpacity
-                                    style={styles.button}
+
+                                <Button
+                                    label="Добавить в корзину"
                                     onPress={handleConfirmAddToCart}
-                                >
-                                    <Text style={styles.buttonText}>Добавить в корзину</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => {
-                                        Keyboard.dismiss();
-                                        setQuantityModal(false);
-                                    }}
-                                >
-                                    <Text style={styles.cancelText}>Отмена</Text>
-                                </TouchableOpacity>
+                                    style={{ marginTop: spacing.md }}
+                                />
+                                <Button
+                                    label="Отмена"
+                                    onPress={() => { Keyboard.dismiss(); setQuantityModal(false); }}
+                                    variant="ghost"
+                                    style={{ marginTop: spacing.sm }}
+                                />
                             </View>
                         </KeyboardAvoidingView>
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
 
+            {/* Overlays */}
             {selectedProduct && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
                     <ProductDetailScreen
@@ -553,15 +692,13 @@ export default function ClientHomeScreen() {
                         }}
                         onSupplierPress={(supplierId) => {
                             setSelectedProduct(null);
-                            // find supplier and navigate to their products
                             const supplier = suppliers.find(s => s.id === supplierId);
                             if (supplier) {
                                 handleSupplierPress(supplier);
                             } else {
-                                // fetch supplier if not in list
                                 client.get(`/api/auth/suppliers/${supplierId}/`)
                                     .then(res => handleSupplierPress(res.data))
-                                    .catch(() => Alert.alert('Ошибка', 'Не удалось загрузить поставщика'));
+                                    .catch(() => {});
                             }
                         }}
                     />
@@ -579,10 +716,7 @@ export default function ClientHomeScreen() {
                     <RequestDetailScreen
                         request={selectedRequest}
                         onClose={() => setSelectedRequest(null)}
-                        onUpdate={() => {
-                            loadMyRequests();
-                            setSelectedRequest(null);
-                        }}
+                        onUpdate={() => { loadMyRequests(); setSelectedRequest(null); }}
                     />
                 </View>
             )}
@@ -603,300 +737,30 @@ export default function ClientHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
+
+    // Header
     header: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-    logout: { color: '#fff', fontSize: 14 },
-    tabs: {
-        flexDirection: 'row',
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    tab: { flex: 1, padding: 14, alignItems: 'center' },
-    tabActive: {
-        borderBottomWidth: 2,
-        borderBottomColor: '#4F46E5',
-    },
-    tabText: { fontSize: 13, color: '#999' },
-    tabTextActive: { color: '#4F46E5', fontWeight: '600' },
-    backButton: { padding: 12, backgroundColor: '#fff' },
-    backText: { color: '#4F46E5', fontSize: 14 },
-    supplierHeader: {
-        flexDirection: 'row',
-        backgroundColor: '#f0f4ff',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e8ff',
-        alignItems: 'flex-start',
-    },
-    supplierHeaderAvatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#4F46E5',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 14,
-    },
-    supplierHeaderAvatarText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-    supplierHeaderInfo: { flex: 1 },
-    supplierHeaderName: { fontSize: 17, fontWeight: '700', color: '#1a1a1a', marginBottom: 4 },
-    supplierHeaderDesc: { fontSize: 13, color: '#666', lineHeight: 18, marginBottom: 4 },
-    supplierHeaderPhone: { fontSize: 13, color: '#4F46E5', marginBottom: 4 },
-    supplierHeaderProducts: { fontSize: 12, color: '#999' },
-    searchRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingRight: 12,
-    },
-    search: {
-        flex: 1,
-        margin: 12,
-        padding: 12,
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        fontSize: 16,
-    },
-    toggleBtn: {
-        width: 44,
-        height: 44,
-        backgroundColor: '#4F46E5',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    toggleBtnText: { color: '#fff', fontSize: 20 },
-    list: { padding: 12 },
-    gridList: { padding: 12 },
-    gridRow: { gap: 12, marginBottom: 12 },
-    loader: { marginTop: 40 },
-    empty: { textAlign: 'center', color: '#999', marginTop: 40 },
-    card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#4F46E5',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    avatarText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-    cardInfo: { flex: 1 },
-    cardTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-    cardDesc: { fontSize: 12, color: '#888', marginTop: 2 },
-    cardSubtitle: { fontSize: 13, color: '#666', marginTop: 2 },
-    arrow: { fontSize: 24, color: '#ccc' },
-
-    // Grid card styles
-    gridCard: {
-        width: cardWidth,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    gridImage: {
-        width: '100%',
-        height: 120,
-    },
-    gridImagePlaceholder: {
-        width: '100%',
-        height: 120,
-        backgroundColor: '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    gridInfo: { padding: 8 },
-    gridName: { fontSize: 13, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
-    gridSupplier: { fontSize: 11, color: '#4F46E5', marginBottom: 4 },
-    gridPrice: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a' },
-    gridUnit: { fontSize: 11, color: '#999' },
-    gridCartBtn: {
-        backgroundColor: '#4F46E5',
-        padding: 8,
-        alignItems: 'center',
-    },
-    gridCartBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-
-    // List card styles
-    productCard: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    productImage: {
-        width: '100%',
-        height: 160,
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    productImagePlaceholder: {
-        width: '100%',
-        height: 160,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    placeholderText: { color: '#999', fontSize: 14 },
-    productInfo: { marginBottom: 12 },
-    productName: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-    supplierName: { fontSize: 13, color: '#4F46E5', marginTop: 2 },
-    productDesc: { fontSize: 13, color: '#666', marginTop: 4 },
-    productPrice: { fontSize: 15, fontWeight: '600', color: '#4F46E5', marginTop: 8 },
-    requestButton: {
-        backgroundColor: '#4F46E5',
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    requestButtonText: { color: '#fff', fontWeight: '600' },
-
-    // Request card
-    requestCard: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    requestHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    requestProduct: { fontSize: 16, fontWeight: '600', color: '#1a1a1a', flex: 1 },
-    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-    badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-    requestDetail: { fontSize: 14, color: '#444', marginTop: 2 },
-    requestDate: { fontSize: 12, color: '#bbb', marginTop: 6 },
-    responseBox: {
-        backgroundColor: '#f0f4ff',
-        borderRadius: 8,
-        padding: 12,
-        marginTop: 12,
-    },
-    responseTitle: { fontSize: 13, fontWeight: '600', color: '#4F46E5' },
-    responseText: { fontSize: 13, color: '#444', marginTop: 4 },
-    pendingBox: {
-        backgroundColor: '#FFF8E7',
-        borderRadius: 8,
-        padding: 10,
-        marginTop: 10,
-        alignItems: 'center',
-    },
-    pendingText: { fontSize: 13, color: '#F59E0B' },
-    tapHint: { fontSize: 12, color: '#4F46E5', marginTop: 10, textAlign: 'right' },
-
-    // Modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
-    },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-    modalSubtitle: { fontSize: 14, color: '#4F46E5', marginBottom: 20 },
-    qtyRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-        marginBottom: 16,
-    },
-    qtyBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#4F46E5',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    qtyBtnText: { color: '#fff', fontSize: 24, fontWeight: '600', lineHeight: 26 },
-    qtyInput: {
-        borderWidth: 2,
-        borderColor: '#4F46E5',
-        borderRadius: 8,
-        width: 80,
-        height: 48,
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        textAlign: 'center',
-    },
-    totalBox: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f0f4ff',
-        padding: 14,
-        borderRadius: 8,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-    },
-    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#4F46E5' },
-    stockHint: { textAlign: 'center', color: '#999', fontSize: 13, marginBottom: 16 },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    cancelButton: { alignItems: 'center', padding: 12 },
-    cancelText: { color: '#666', fontSize: 16 },
+    headerGreeting: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+    headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff', maxWidth: 180 },
+    headerActions: { flexDirection: 'row', gap: spacing.sm },
     headerIconBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         backgroundColor: 'rgba(255,255,255,0.15)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    cartBadge: {
+    badge: {
         position: 'absolute',
         top: -2,
         right: -2,
@@ -908,5 +772,429 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 3,
     },
-    cartBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+
+    // Tabs
+    tabs: {
+        flexDirection: 'row',
+        backgroundColor: colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    tab: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.md,
+    },
+    tabActive: {
+        borderBottomWidth: 2,
+        borderBottomColor: colors.primary,
+    },
+    tabText: { fontSize: 12, color: colors.textTertiary, fontWeight: '500' },
+    tabTextActive: { color: colors.primary, fontWeight: '700' },
+
+    // Back button
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        padding: spacing.md,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    backText: { color: colors.primary, fontSize: 14, fontWeight: '500' },
+
+    // Supplier profile card
+    supplierProfileCard: {
+        backgroundColor: colors.card,
+        margin: spacing.lg,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        ...shadow.sm,
+    },
+    supplierProfileTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+    },
+    supplierProfileAvatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.md,
+        ...shadow.md,
+    },
+    supplierProfileAvatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
+    supplierProfileInfo: { flex: 1 },
+    supplierProfileName: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
+    supplierProfileBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: colors.primaryLight,
+        alignSelf: 'flex-start',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 3,
+        borderRadius: radius.full,
+    },
+    supplierProfileBadgeText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
+    supplierProfileDesc: {
+        fontSize: 13,
+        color: colors.textSecondary,
+        lineHeight: 18,
+        marginBottom: spacing.md,
+    },
+    supplierProfileContacts: {
+        gap: spacing.sm,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderLight,
+    },
+    supplierContactItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    supplierContactIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.primaryLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    supplierContactText: { fontSize: 13, color: colors.textSecondary },
+
+    // Search
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        gap: spacing.md,
+        backgroundColor: colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    searchBox: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.background,
+        borderRadius: radius.lg,
+        paddingHorizontal: spacing.md,
+        height: 44,
+        gap: spacing.sm,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: colors.text,
+        paddingVertical: 0,
+    },
+    toggleBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: radius.lg,
+        backgroundColor: colors.primaryLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.primary + '30',
+    },
+
+    // Lists
+    list: { padding: spacing.lg, paddingBottom: 40 },
+    gridList: { padding: spacing.lg, paddingBottom: 40 },
+    gridRow: { gap: spacing.md, marginBottom: spacing.md },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    // Empty state
+    emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: spacing.xxxl },
+    emptyIconBox: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.xl,
+    },
+    emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm },
+    emptySubtitle: { fontSize: 14, color: colors.textTertiary, textAlign: 'center', lineHeight: 20 },
+
+    // Supplier card
+    supplierCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        ...shadow.sm,
+    },
+    supplierAvatar: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.md,
+        flexShrink: 0,
+    },
+    supplierAvatarText: { color: '#fff', fontSize: 20, fontWeight: '800' },
+    supplierInfo: { flex: 1 },
+    supplierName: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 3 },
+    supplierDesc: { fontSize: 12, color: colors.textSecondary, marginBottom: 4 },
+    supplierMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    supplierMetaText: { fontSize: 12, color: colors.textTertiary },
+    supplierChevron: { marginLeft: spacing.sm },
+
+    // Grid product card
+    gridCard: {
+        width: cardWidth,
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        overflow: 'hidden',
+        ...shadow.sm,
+    },
+    gridImage: { width: '100%', height: 130 },
+    gridImagePlaceholder: {
+        width: '100%',
+        height: 130,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    gridBody: { padding: spacing.md },
+    gridName: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 4, lineHeight: 18 },
+    gridSupplierRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
+    gridSupplier: { fontSize: 11, color: colors.primary, flex: 1 },
+    gridPrice: { fontSize: 15, fontWeight: '800', color: colors.text },
+    gridUnit: { fontSize: 11, color: colors.textTertiary },
+    gridCartBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primary,
+        padding: spacing.sm,
+        gap: spacing.xs,
+    },
+    gridCartBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+
+    // List product card
+    listCard: {
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        marginBottom: spacing.md,
+        overflow: 'hidden',
+        ...shadow.sm,
+    },
+    listImage: { width: '100%', height: 180 },
+    listImagePlaceholder: {
+        width: '100%',
+        height: 160,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    listBody: { padding: spacing.lg },
+    listName: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 },
+    listSupplierRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
+    listSupplier: { fontSize: 13, color: colors.primary, fontWeight: '500' },
+    listDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: spacing.md },
+    listBottom: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+    },
+    listPrice: { fontSize: 22, fontWeight: '800', color: colors.primary },
+    listUnit: { fontSize: 12, color: colors.textTertiary },
+    listCartBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        gap: spacing.xs,
+    },
+    listCartBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+
+    // Request card
+    requestCard: {
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        ...shadow.sm,
+    },
+    requestTop: { marginBottom: spacing.sm },
+    requestTitleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    requestTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
+    },
+    statusBadgeText: { fontSize: 12, fontWeight: '600' },
+    requestMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginBottom: 4,
+    },
+    requestMetaText: { fontSize: 13, color: colors.textSecondary, flex: 1 },
+    requestTotal: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: colors.text,
+        marginVertical: spacing.sm,
+    },
+    pendingBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: '#FEF3C7',
+        borderRadius: radius.md,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+    },
+    pendingText: { fontSize: 13, color: colors.warning, fontWeight: '500' },
+    responseBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: '#DCFCE7',
+        borderRadius: radius.md,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+    },
+    responsePreviewText: { fontSize: 13, color: colors.success, flex: 1 },
+    requestFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderLight,
+    },
+    requestDateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    requestDate: { fontSize: 12, color: colors.textTertiary },
+    detailsLink: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    detailsLinkText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+
+    // Quantity modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
+        paddingTop: spacing.lg,
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: colors.border,
+        alignSelf: 'center',
+        marginBottom: spacing.xl,
+    },
+    modalProductImage: {
+        width: '100%',
+        height: 140,
+        borderRadius: radius.lg,
+        marginBottom: spacing.lg,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
+    modalSupplierRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginBottom: spacing.lg,
+    },
+    modalSupplierText: { fontSize: 13, color: colors.primary },
+    priceInfoBox: {
+        flexDirection: 'row',
+        backgroundColor: colors.background,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.xl,
+    },
+    priceInfoItem: { flex: 1, alignItems: 'center' },
+    priceInfoLabel: { fontSize: 11, color: colors.textTertiary, marginBottom: 4 },
+    priceInfoValue: { fontSize: 13, fontWeight: '700', color: colors.text, textAlign: 'center' },
+    priceInfoDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.md },
+    qtyLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.textSecondary,
+        marginBottom: spacing.md,
+        textAlign: 'center',
+    },
+    qtyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xl,
+        marginBottom: spacing.lg,
+    },
+    qtyBtn: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2,
+        borderColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    qtyInput: {
+        width: 80,
+        height: 56,
+        borderWidth: 2,
+        borderColor: colors.primary,
+        borderRadius: radius.lg,
+        fontSize: 24,
+        fontWeight: '800',
+        color: colors.text,
+        textAlign: 'center',
+        padding: 0,
+    },
+    totalBox: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: colors.primaryLight,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.sm,
+        borderWidth: 1.5,
+        borderColor: colors.primary + '40',
+    },
+    totalLabel: { fontSize: 14, fontWeight: '600', color: colors.primary },
+    totalValue: { fontSize: 22, fontWeight: '800', color: colors.primary },
 });
