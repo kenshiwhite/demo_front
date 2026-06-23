@@ -521,9 +521,6 @@ export default function ClientHomeScreen() {
                                         </Text>
                                     </View>
                                 ) : null}
-                                <Text style={styles.stockHint}>
-                                    Доступно: {selectedProductForCart?.stock_quantity} {selectedProductForCart?.unit}
-                                </Text>
                                 <TouchableOpacity
                                     style={styles.button}
                                     onPress={handleConfirmAddToCart}
