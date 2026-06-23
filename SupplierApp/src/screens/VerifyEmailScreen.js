@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity,
-    StyleSheet, Alert, ActivityIndicator, Modal,
-    KeyboardAvoidingView, Platform
+    View, Text, TouchableOpacity, StyleSheet,
+    Alert, Modal, KeyboardAvoidingView, Platform,
+    TouchableWithoutFeedback, Keyboard, ScrollView
 } from 'react-native';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { InputField, Button } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
 
 export default function VerifyEmailScreen() {
     const { user, signIn, signOut } = useAuth();
@@ -26,7 +28,6 @@ export default function VerifyEmailScreen() {
             await client.post('/api/auth/verify-email/', { code });
             const response = await client.get('/api/auth/me/');
             await signIn(response.data);
-            Alert.alert('Успешно', 'Email подтверждён!');
         } catch (e) {
             Alert.alert('Ошибка', e.response?.data?.detail || 'Неверный код');
         } finally {
@@ -37,8 +38,14 @@ export default function VerifyEmailScreen() {
     const handleResend = async () => {
         setResending(true);
         try {
-            await client.post('/api/auth/resend-verification/');
-            Alert.alert('Отправлено', 'Новый код отправлен на ваш email');
+            const response = await client.post('/api/auth/resend-verification/');
+            if (response.data.code) {
+                Alert.alert(
+                    'Код подтверждения',
+                    `Ваш код: ${response.data.code}`,
+                    [{ text: 'OK', onPress: () => setCode(response.data.code) }]
+                );
+            }
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось отправить код');
         } finally {
@@ -53,21 +60,18 @@ export default function VerifyEmailScreen() {
         }
         setChangingEmail(true);
         try {
-            // step 1 - update email
             await client.patch('/api/auth/me/update/', { email: newEmail });
-            
-            // step 2 - update user in context with new email
             const updatedUser = await client.get('/api/auth/me/');
             await signIn(updatedUser.data);
-            
-            // step 3 - send verification code to new email
-            await client.post('/api/auth/resend-verification/');
-            
+            const codeResponse = await client.post('/api/auth/resend-verification/');
             setChangeEmailModal(false);
             setNewEmail('');
-            Alert.alert('Успешно', `Код подтверждения отправлен на ${newEmail}`);
+            if (codeResponse.data.code) {
+                Alert.alert('Код отправлен', `Ваш новый код: ${codeResponse.data.code}`, [
+                    { text: 'OK', onPress: () => setCode(codeResponse.data.code) }
+                ]);
+            }
         } catch (e) {
-            console.log('Change email error:', e.response?.data);
             Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось изменить email');
         } finally {
             setChangingEmail(false);
@@ -77,7 +81,7 @@ export default function VerifyEmailScreen() {
     const handleSkip = () => {
         Alert.alert(
             'Пропустить верификацию?',
-            'Без подтверждения email вы не сможете отправлять заявки и добавлять товары. Продолжить?',
+            'Без подтверждения email вы не сможете отправлять заявки.',
             [
                 { text: 'Отмена', style: 'cancel' },
                 {
@@ -96,24 +100,27 @@ export default function VerifyEmailScreen() {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-            {/* Top buttons */}
             <View style={styles.topRow}>
-                <TouchableOpacity onPress={signOut} style={styles.topBtn}>
-                    <Text style={styles.topBtnText}>← Выйти</Text>
+                <TouchableOpacity onPress={signOut}>
+                    <Text style={styles.topBtn}>← Выйти</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleSkip} style={styles.topBtn}>
-                    <Text style={styles.skipText}>Пропустить</Text>
+                <TouchableOpacity onPress={handleSkip}>
+                    <Text style={styles.skipBtn}>Пропустить</Text>
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.content}>
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.iconContainer}>
                     <Text style={styles.icon}>📧</Text>
                 </View>
 
                 <Text style={styles.title}>Подтвердите email</Text>
                 <Text style={styles.subtitle}>
-                    Мы отправили 6-значный код на{'\n'}
+                    Код подтверждения отправлен на{'\n'}
                     <Text style={styles.email}>{user?.email}</Text>
                 </Text>
 
@@ -121,223 +128,116 @@ export default function VerifyEmailScreen() {
                     style={styles.changeEmailBtn}
                     onPress={() => setChangeEmailModal(true)}
                 >
-                    <Text style={styles.changeEmailText}>Неверный email? Изменить</Text>
+                    <Text style={styles.changeEmailText}>Неверный email? Изменить →</Text>
                 </TouchableOpacity>
 
-                <TextInput
-                    style={styles.codeInput}
-                    placeholder="000000"
-                    value={code}
-                    onChangeText={setCode}
-                    keyboardType="numeric"
-                    maxLength={6}
-                    textAlign="center"
+                <View style={styles.codeSection}>
+                    <Text style={styles.codeLabel}>Введите 6-значный код</Text>
+                    <InputField
+                        value={code}
+                        onChangeText={setCode}
+                        placeholder="000000"
+                        keyboardType="numeric"
+                        maxLength={6}
+                        style={{ marginBottom: 0 }}
+                    />
+                </View>
+
+                <Button
+                    label="Подтвердить"
+                    onPress={handleVerify}
+                    loading={loading}
+                    style={{ marginTop: spacing.xl }}
                 />
 
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={handleVerify}
-                    disabled={loading}
-                >
-                    {loading
-                        ? <ActivityIndicator color="#fff" />
-                        : <Text style={styles.buttonText}>Подтвердить</Text>
-                    }
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.resendButton}
+                <Button
+                    label={resending ? 'Отправка...' : 'Отправить код повторно'}
                     onPress={handleResend}
-                    disabled={resending}
-                >
-                    {resending
-                        ? <ActivityIndicator color="#4F46E5" size="small" />
-                        : <Text style={styles.resendText}>Отправить код повторно</Text>
-                    }
-                </TouchableOpacity>
+                    loading={resending}
+                    variant="ghost"
+                    style={{ marginTop: spacing.sm }}
+                />
 
                 <Text style={styles.hint}>
                     Проверьте папку "Спам" если письмо не пришло
                 </Text>
-            </View>
+            </ScrollView>
 
-            {/* Change email modal */}
             <Modal visible={changeEmailModal} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Изменить email</Text>
-                        <Text style={styles.modalSubtitle}>
-                            Введите правильный email и мы отправим новый код
-                        </Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Новый email"
-                            value={newEmail}
-                            onChangeText={setNewEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
-                        <TouchableOpacity
-                            style={styles.button}
-                            onPress={handleChangeEmail}
-                            disabled={changingEmail}
+                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+                    <View style={styles.modalOverlay}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
-                            {changingEmail
-                                ? <ActivityIndicator color="#fff" />
-                                : <Text style={styles.buttonText}>Сохранить и отправить код</Text>
-                            }
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.cancelButton}
-                            onPress={() => {
-                                setChangeEmailModal(false);
-                                setNewEmail('');
-                            }}
-                        >
-                            <Text style={styles.cancelText}>Отмена</Text>
-                        </TouchableOpacity>
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>Изменить email</Text>
+                                <Text style={styles.modalSubtitle}>
+                                    Введите правильный email и мы отправим новый код
+                                </Text>
+                                <InputField
+                                    label="Новый email"
+                                    value={newEmail}
+                                    onChangeText={setNewEmail}
+                                    placeholder="example@email.com"
+                                    keyboardType="email-address"
+                                />
+                                <Button
+                                    label="Сохранить и отправить код"
+                                    onPress={handleChangeEmail}
+                                    loading={changingEmail}
+                                />
+                                <Button
+                                    label="Отмена"
+                                    onPress={() => { setChangeEmailModal(false); setNewEmail(''); }}
+                                    variant="ghost"
+                                    style={{ marginTop: spacing.sm }}
+                                />
+                            </View>
+                        </KeyboardAvoidingView>
                     </View>
-                </View>
+                </TouchableWithoutFeedback>
             </Modal>
         </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
+    container: { flex: 1, backgroundColor: colors.background },
     topRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 56,
-        paddingHorizontal: 16,
-        paddingBottom: 8,
+        paddingTop: STATUS_TOP,
+        paddingHorizontal: spacing.xxl,
+        paddingBottom: spacing.md,
     },
-    topBtn: {
-        padding: 8,
+    topBtn: { color: colors.textSecondary, fontSize: 15 },
+    skipBtn: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+    scroll: {
+        flexGrow: 1,
+        paddingHorizontal: spacing.xxl,
+        paddingBottom: spacing.xxxl,
     },
-    topBtnText: {
-        color: '#666',
-        fontSize: 15,
-    },
-    skipText: {
-        color: '#4F46E5',
-        fontSize: 15,
-    },
-    content: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 24,
-    },
-    iconContainer: {
-        alignItems: 'center',
-        marginBottom: 24,
-    },
+    iconContainer: { alignItems: 'center', marginBottom: spacing.xl, marginTop: spacing.xl },
     icon: { fontSize: 64 },
-    title: {
-        fontSize: 26,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        textAlign: 'center',
-        marginBottom: 12,
-    },
-    subtitle: {
-        fontSize: 15,
-        color: '#666',
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 8,
-    },
-    email: {
-        color: '#4F46E5',
-        fontWeight: '600',
-    },
-    changeEmailBtn: {
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    changeEmailText: {
-        color: '#EF4444',
-        fontSize: 14,
-        textDecorationLine: 'underline',
-    },
-    codeInput: {
-        borderWidth: 2,
-        borderColor: '#4F46E5',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        marginBottom: 24,
-        letterSpacing: 12,
-    },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    resendButton: {
-        alignItems: 'center',
-        padding: 12,
-        marginBottom: 16,
-    },
-    resendText: {
-        color: '#4F46E5',
-        fontSize: 15,
-    },
-    hint: {
-        textAlign: 'center',
-        color: '#999',
-        fontSize: 13,
-    },
+    title: { ...typography.h1, textAlign: 'center', marginBottom: spacing.md },
+    subtitle: { ...typography.body, textAlign: 'center', color: colors.textSecondary, lineHeight: 24, marginBottom: spacing.md },
+    email: { color: colors.primary, fontWeight: '600' },
+    changeEmailBtn: { alignItems: 'center', marginBottom: spacing.xl },
+    changeEmailText: { color: colors.danger, fontSize: 14 },
+    codeSection: { marginBottom: spacing.md },
+    codeLabel: { ...typography.label, marginBottom: spacing.sm },
+    hint: { ...typography.caption, textAlign: 'center', marginTop: spacing.xl },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
     },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 4,
-        color: '#1a1a1a',
-    },
-    modalSubtitle: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 20,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 14,
-        marginBottom: 16,
-        fontSize: 16,
-    },
-    cancelButton: {
-        alignItems: 'center',
-        padding: 12,
-    },
-    cancelText: {
-        color: '#666',
-        fontSize: 16,
-    },
+    modalTitle: { ...typography.h2, marginBottom: spacing.xs },
+    modalSubtitle: { ...typography.bodySmall, marginBottom: spacing.xl },
 });

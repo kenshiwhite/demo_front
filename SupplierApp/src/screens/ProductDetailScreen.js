@@ -3,21 +3,21 @@ import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Image, Dimensions
 } from 'react-native';
-import { useCart } from '../context/CartContext';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import Icon from '../components/Icon';
+import { Button } from '../components/UI';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function ProductDetailScreen({ product, onClose, onAddToCart, onSupplierPress }) {
-    const { addToCart } = useCart();
-
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.back}>← Назад</Text>
+                <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Товар</Text>
-                <View style={{ width: 60 }} />
+                <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
+                <View style={styles.headerBtn} />
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -29,33 +29,38 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
                     />
                 ) : (
                     <View style={styles.imagePlaceholder}>
+                        <Icon name="image" size={48} color={colors.textTertiary} />
                         <Text style={styles.imagePlaceholderText}>Нет фото</Text>
                     </View>
                 )}
 
                 <View style={styles.body}>
-                    {/* Name and price */}
                     <View style={styles.titleRow}>
                         <Text style={styles.name}>{product.name}</Text>
                         <View style={[
                             styles.availableBadge,
-                            { backgroundColor: product.is_available ? '#10B981' : '#EF4444' }
+                            { backgroundColor: product.is_available ? '#DCFCE7' : '#FEE2E2' }
                         ]}>
-                            <Text style={styles.availableText}>
+                            <Text style={[
+                                styles.availableText,
+                                { color: product.is_available ? colors.success : colors.danger }
+                            ]}>
                                 {product.is_available ? 'В наличии' : 'Нет в наличии'}
                             </Text>
                         </View>
                     </View>
 
-                    <Text style={styles.price}>
-                        {parseInt(product.price).toLocaleString('ru-RU')} ₸
-                        <Text style={styles.unit}> / {product.unit}</Text>
-                    </Text>
+                    <View style={styles.priceRow}>
+                        <Text style={styles.price}>
+                            {parseInt(product.price).toLocaleString('ru-RU')} ₸
+                        </Text>
+                        <Text style={styles.unit}>/ {product.unit}</Text>
+                    </View>
 
-                    {/* Supplier */}
                     <TouchableOpacity
                         style={styles.supplierBox}
                         onPress={() => onSupplierPress && onSupplierPress(product.supplier)}
+                        activeOpacity={0.7}
                     >
                         <View style={styles.supplierAvatar}>
                             <Text style={styles.supplierAvatarText}>
@@ -66,10 +71,9 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
                             <Text style={styles.supplierLabel}>Поставщик</Text>
                             <Text style={styles.supplierName}>{product.supplier_name}</Text>
                         </View>
-                        <Text style={{ color: '#4F46E5', fontSize: 18 }}>›</Text>
+                        <Icon name="chevronRight" size={18} color={colors.primary} />
                     </TouchableOpacity>
 
-                    {/* Description */}
                     {product.description ? (
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Описание</Text>
@@ -77,22 +81,30 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
                         </View>
                     ) : null}
 
-                    {/* Details */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Детали</Text>
+                        <Text style={styles.sectionTitle}>Детали товара</Text>
                         <View style={styles.detailRow}>
+                            <View style={styles.detailIcon}>
+                                <Icon name="layers" size={14} color={colors.textTertiary} />
+                            </View>
                             <Text style={styles.detailLabel}>Единица измерения</Text>
                             <Text style={styles.detailValue}>{product.unit}</Text>
                         </View>
+                        {product.category_name ? (
+                            <View style={styles.detailRow}>
+                                <View style={styles.detailIcon}>
+                                    <Icon name="filter" size={14} color={colors.textTertiary} />
+                                </View>
+                                <Text style={styles.detailLabel}>Категория</Text>
+                                <Text style={styles.detailValue}>{product.category_name}</Text>
+                            </View>
+                        ) : null}
                         <View style={styles.detailRow}>
-                            <Text style={styles.detailLabel}>Категория</Text>
-                            <Text style={styles.detailValue}>
-                                {product.category_name || '—'}
-                            </Text>
-                        </View>
-                        <View style={styles.detailRow}>
+                            <View style={styles.detailIcon}>
+                                <Icon name="trending_up" size={14} color={colors.textTertiary} />
+                            </View>
                             <Text style={styles.detailLabel}>Цена</Text>
-                            <Text style={styles.detailValue}>
+                            <Text style={[styles.detailValue, { color: colors.primary }]}>
                                 {parseInt(product.price).toLocaleString('ru-RU')} ₸ / {product.unit}
                             </Text>
                         </View>
@@ -100,11 +112,10 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
                 </View>
             </ScrollView>
 
-            {/* Add to cart button */}
             {product.is_available && (
                 <View style={styles.footer}>
                     <View style={styles.footerPrice}>
-                        <Text style={styles.footerPriceLabel}>Цена</Text>
+                        <Text style={styles.footerPriceLabel}>Цена за единицу</Text>
                         <Text style={styles.footerPriceValue}>
                             {parseInt(product.price).toLocaleString('ru-RU')} ₸ / {product.unit}
                         </Text>
@@ -112,7 +123,9 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
                     <TouchableOpacity
                         style={styles.cartButton}
                         onPress={() => onAddToCart(product)}
+                        activeOpacity={0.8}
                     >
+                        <Icon name="cart" size={18} color="#fff" />
                         <Text style={styles.cartButtonText}>В корзину</Text>
                     </TouchableOpacity>
                 </View>
@@ -122,133 +135,119 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        justifyContent: 'space-between',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    back: { color: '#fff', fontSize: 14 },
-    image: {
-        width: screenWidth,
-        height: 280,
-    },
+    headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 16, fontWeight: '700', color: '#fff', flex: 1, textAlign: 'center', marginHorizontal: spacing.sm },
+    image: { width: screenWidth, height: 300 },
     imagePlaceholder: {
         width: screenWidth,
-        height: 280,
-        backgroundColor: '#f0f0f0',
+        height: 240,
+        backgroundColor: colors.borderLight,
         justifyContent: 'center',
         alignItems: 'center',
+        gap: spacing.md,
     },
-    imagePlaceholderText: { color: '#999', fontSize: 16 },
-    body: { padding: 16 },
+    imagePlaceholderText: { ...typography.bodySmall },
+    body: { padding: spacing.lg },
     titleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 8,
+        marginBottom: spacing.sm,
     },
-    name: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        flex: 1,
-        marginRight: 12,
-    },
+    name: { fontSize: 22, fontWeight: '800', color: colors.text, flex: 1, marginRight: spacing.md },
     availableBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
+        flexShrink: 0,
     },
-    availableText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-    price: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#4F46E5',
-        marginBottom: 16,
+    availableText: { fontSize: 12, fontWeight: '600' },
+    priceRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        marginBottom: spacing.xl,
+        gap: spacing.xs,
     },
-    unit: {
-        fontSize: 16,
-        fontWeight: '400',
-        color: '#666',
-    },
+    price: { fontSize: 28, fontWeight: '800', color: colors.primary },
+    unit: { fontSize: 16, color: colors.textSecondary },
     supplierBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.lg,
+        ...shadow.sm,
     },
     supplierAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#4F46E5',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: spacing.md,
     },
-    supplierAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    supplierLabel: { fontSize: 12, color: '#999' },
-    supplierName: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+    supplierAvatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+    supplierLabel: { fontSize: 11, color: colors.textTertiary, marginBottom: 2 },
+    supplierName: { fontSize: 15, fontWeight: '600', color: colors.text },
     section: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        ...shadow.sm,
     },
     sectionTitle: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '700',
-        color: '#4F46E5',
-        marginBottom: 12,
+        color: colors.primary,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 1,
+        marginBottom: spacing.md,
     },
-    description: {
-        fontSize: 15,
-        color: '#444',
-        lineHeight: 22,
-    },
+    description: { fontSize: 15, color: colors.textSecondary, lineHeight: 22 },
     detailRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 8,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
+        alignItems: 'center',
+        paddingVertical: spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.borderLight,
     },
-    detailLabel: { fontSize: 14, color: '#666' },
-    detailValue: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+    detailIcon: { width: 24, marginRight: spacing.sm },
+    detailLabel: { flex: 1, fontSize: 14, color: colors.textSecondary },
+    detailValue: { fontSize: 14, fontWeight: '600', color: colors.text },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
+        padding: spacing.lg,
+        paddingBottom: spacing.xl,
+        backgroundColor: colors.card,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
-        gap: 12,
+        borderTopColor: colors.border,
+        gap: spacing.lg,
     },
     footerPrice: { flex: 1 },
-    footerPriceLabel: { fontSize: 12, color: '#999' },
-    footerPriceValue: { fontSize: 16, fontWeight: 'bold', color: '#4F46E5' },
+    footerPriceLabel: { fontSize: 11, color: colors.textTertiary },
+    footerPriceValue: { fontSize: 15, fontWeight: '700', color: colors.primary },
     cartButton: {
-        backgroundColor: '#4F46E5',
-        paddingHorizontal: 32,
-        paddingVertical: 14,
-        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        gap: spacing.sm,
     },
-    cartButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+    cartButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

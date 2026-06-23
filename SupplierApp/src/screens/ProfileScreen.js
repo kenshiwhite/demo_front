@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, Alert, TextInput, ActivityIndicator,
-    Modal, KeyboardAvoidingView, Platform,
+    StyleSheet, Alert, Modal,
+    KeyboardAvoidingView, Platform,
     TouchableWithoutFeedback, Keyboard
 } from 'react-native';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { InputField, Button, Card, SectionTitle, Divider } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 
 export default function ProfileScreen({ onClose }) {
     const { user, signIn, signOut } = useAuth();
@@ -14,7 +16,6 @@ export default function ProfileScreen({ onClose }) {
     const [loading, setLoading] = useState(false);
     const [passwordModal, setPasswordModal] = useState(false);
     const [emailModal, setEmailModal] = useState(false);
-
 
     const [form, setForm] = useState({
         company_name: user?.company_name || '',
@@ -69,11 +70,7 @@ export default function ProfileScreen({ onClose }) {
                 new_password: passwordForm.new_password,
             });
             setPasswordModal(false);
-            setPasswordForm({
-                old_password: '',
-                new_password: '',
-                confirm_password: '',
-            });
+            setPasswordForm({ old_password: '', new_password: '', confirm_password: '' });
             Alert.alert('Успешно', 'Пароль изменён');
         } catch (e) {
             Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось изменить пароль');
@@ -94,7 +91,7 @@ export default function ProfileScreen({ onClose }) {
             await signIn(updatedUser.data);
             setEmailModal(false);
             setNewEmail('');
-            Alert.alert('Успешно', 'Email обновлён. Подтвердите новый email.');
+            Alert.alert('Успешно', 'Email обновлён');
         } catch (e) {
             Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось изменить email');
         } finally {
@@ -114,11 +111,7 @@ export default function ProfileScreen({ onClose }) {
     };
 
     const getRoleText = (role) => {
-        const roles = {
-            client: 'Клиент',
-            supplier: 'Поставщик',
-            admin: 'Администратор',
-        };
+        const roles = { client: 'Клиент', supplier: 'Поставщик', admin: 'Администратор' };
         return roles[role] || role;
     };
 
@@ -131,10 +124,7 @@ export default function ProfileScreen({ onClose }) {
                 <Text style={styles.headerTitle}>Профиль</Text>
                 {editing ? (
                     <TouchableOpacity onPress={handleSaveProfile} disabled={loading}>
-                        {loading
-                            ? <ActivityIndicator color="#fff" size="small" />
-                            : <Text style={styles.saveBtn}>Сохранить</Text>
-                        }
+                        <Text style={styles.saveBtn}>Сохранить</Text>
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity onPress={() => setEditing(true)}>
@@ -143,8 +133,8 @@ export default function ProfileScreen({ onClose }) {
                 )}
             </View>
 
-            <ScrollView style={styles.body}>
-                {/* Avatar */}
+            <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+                {/* Avatar section */}
                 <View style={styles.avatarSection}>
                     <View style={styles.avatar}>
                         <Text style={styles.avatarText}>
@@ -155,82 +145,81 @@ export default function ProfileScreen({ onClose }) {
                     <View style={styles.roleBadge}>
                         <Text style={styles.roleText}>{getRoleText(user?.role)}</Text>
                     </View>
+                    {!user?.is_email_verified && (
+                        <View style={styles.unverifiedBadge}>
+                            <Text style={styles.unverifiedText}>⚠️ Email не подтверждён</Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* Basic info */}
+                {/* Company info */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Основная информация</Text>
-
-                    <View style={styles.field}>
-                        <Text style={styles.fieldLabel}>Имя пользователя</Text>
-                        <Text style={styles.fieldValue}>{user?.username}</Text>
-                    </View>
-
+                    <SectionTitle label="Информация о компании" />
                     <View style={styles.field}>
                         <Text style={styles.fieldLabel}>Название компании</Text>
                         {editing ? (
-                            <TextInput
-                                style={styles.input}
+                            <InputField
                                 value={form.company_name}
                                 onChangeText={(v) => setForm(p => ({ ...p, company_name: v }))}
-                                placeholder="Название компании"
+                                placeholder="Введите название компании"
+                                autoCapitalize="words"
+                                style={{ marginBottom: 0 }}
                             />
                         ) : (
-                            <Text style={styles.fieldValue}>
-                                {user?.company_name || '—'}
-                            </Text>
+                            <Text style={styles.fieldValue}>{user?.company_name || '—'}</Text>
                         )}
                     </View>
-
+                    <Divider />
+                    <View style={styles.field}>
+                        <Text style={styles.fieldLabel}>Телефон</Text>
+                        {editing ? (
+                            <InputField
+                                value={form.phone}
+                                onChangeText={(v) => setForm(p => ({ ...p, phone: v }))}
+                                placeholder="+7 (___) ___-__-__"
+                                keyboardType="phone-pad"
+                                style={{ marginBottom: 0 }}
+                            />
+                        ) : (
+                            <Text style={styles.fieldValue}>{user?.phone || '—'}</Text>
+                        )}
+                    </View>
+                    <Divider />
                     <View style={styles.field}>
                         <Text style={styles.fieldLabel}>О компании</Text>
                         {editing ? (
-                            <TextInput
-                                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                            <InputField
                                 value={form.description}
                                 onChangeText={(v) => setForm(p => ({ ...p, description: v }))}
                                 placeholder="Краткое описание вашей компании"
                                 multiline
+                                numberOfLines={3}
+                                style={{ marginBottom: 0 }}
                             />
                         ) : (
-                            <Text style={styles.fieldValue}>
-                                {user?.description || '—'}
-                            </Text>
-                        )}
-                    </View>
-
-                    <View style={styles.field}>
-                        <Text style={styles.fieldLabel}>Телефон</Text>
-                        {editing ? (
-                            <TextInput
-                                style={styles.input}
-                                value={form.phone}
-                                onChangeText={(v) => setForm(p => ({ ...p, phone: v }))}
-                                placeholder="Номер телефона"
-                                keyboardType="phone-pad"
-                            />
-                        ) : (
-                            <Text style={styles.fieldValue}>
-                                {user?.phone || '—'}
-                            </Text>
+                            <Text style={styles.fieldValue}>{user?.description || '—'}</Text>
                         )}
                     </View>
                 </View>
 
                 {/* Email */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Email</Text>
+                    <SectionTitle label="Email" />
                     <View style={styles.field}>
                         <Text style={styles.fieldLabel}>Адрес</Text>
                         <Text style={styles.fieldValue}>{user?.email}</Text>
                     </View>
+                    <Divider />
                     <View style={styles.field}>
                         <Text style={styles.fieldLabel}>Статус</Text>
                         <View style={[
-                            styles.verifiedBadge,
-                            { backgroundColor: user?.is_email_verified ? '#10B981' : '#F59E0B' }
+                            styles.statusBadge,
+                            { backgroundColor: user?.is_email_verified ? '#DCFCE7' : '#FEF3C7' }
                         ]}>
-                            <Text style={styles.verifiedText}>
+                            <Text style={[
+                                styles.statusBadgeText,
+                                { color: user?.is_email_verified ? colors.success : colors.warning }
+                            ]}>
                                 {user?.is_email_verified ? '✓ Подтверждён' : '⏳ Не подтверждён'}
                             </Text>
                         </View>
@@ -239,13 +228,13 @@ export default function ProfileScreen({ onClose }) {
                         style={styles.actionBtn}
                         onPress={() => setEmailModal(true)}
                     >
-                        <Text style={styles.actionBtnText}>Изменить email</Text>
+                        <Text style={styles.actionBtnText}>Изменить email →</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Account info */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Аккаунт</Text>
+                    <SectionTitle label="Аккаунт" />
                     <View style={styles.field}>
                         <Text style={styles.fieldLabel}>Дата регистрации</Text>
                         <Text style={styles.fieldValue}>
@@ -258,37 +247,34 @@ export default function ProfileScreen({ onClose }) {
 
                 {/* Security */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Безопасность</Text>
+                    <SectionTitle label="Безопасность" />
                     <TouchableOpacity
                         style={styles.actionBtn}
                         onPress={() => setPasswordModal(true)}
                     >
-                        <Text style={styles.actionBtnText}>Изменить пароль</Text>
+                        <Text style={styles.actionBtnText}>Изменить пароль →</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Logout */}
-                <TouchableOpacity
-                    style={styles.logoutBtn}
-                    onPress={handleLogout}
-                >
-                    <Text style={styles.logoutText}>Выйти из аккаунта</Text>
-                </TouchableOpacity>
-
                 {editing && (
-                    <TouchableOpacity
-                        style={styles.cancelBtn}
+                    <Button
+                        label="Отмена"
                         onPress={() => {
                             setEditing(false);
                             setForm({
                                 company_name: user?.company_name || '',
                                 phone: user?.phone || '',
+                                description: user?.description || '',
                             });
                         }}
-                    >
-                        <Text style={styles.cancelText}>Отмена</Text>
-                    </TouchableOpacity>
+                        variant="secondary"
+                        style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+                    />
                 )}
+
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                    <Text style={styles.logoutText}>Выйти из аккаунта</Text>
+                </TouchableOpacity>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -302,50 +288,37 @@ export default function ProfileScreen({ onClose }) {
                         >
                             <View style={styles.modalContent}>
                                 <Text style={styles.modalTitle}>Изменить пароль</Text>
-                                <TextInput
-                                    style={styles.modalInput}
-                                    placeholder="Текущий пароль"
+                                <InputField
+                                    label="Текущий пароль"
                                     value={passwordForm.old_password}
                                     onChangeText={(v) => setPasswordForm(p => ({ ...p, old_password: v }))}
+                                    placeholder="Введите текущий пароль"
                                     secureTextEntry
                                 />
-                                <TextInput
-                                    style={styles.modalInput}
-                                    placeholder="Новый пароль (мин. 8 символов)"
+                                <InputField
+                                    label="Новый пароль"
                                     value={passwordForm.new_password}
                                     onChangeText={(v) => setPasswordForm(p => ({ ...p, new_password: v }))}
+                                    placeholder="Минимум 8 символов"
                                     secureTextEntry
                                 />
-                                <TextInput
-                                    style={styles.modalInput}
-                                    placeholder="Повторите новый пароль"
+                                <InputField
+                                    label="Подтвердите новый пароль"
                                     value={passwordForm.confirm_password}
                                     onChangeText={(v) => setPasswordForm(p => ({ ...p, confirm_password: v }))}
+                                    placeholder="Повторите новый пароль"
                                     secureTextEntry
                                 />
-                                <TouchableOpacity
-                                    style={styles.modalBtn}
-                                    onPress={handleChangePassword}
-                                    disabled={loading}
-                                >
-                                    {loading
-                                        ? <ActivityIndicator color="#fff" />
-                                        : <Text style={styles.modalBtnText}>Сохранить</Text>
-                                    }
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
+                                <Button label="Сохранить" onPress={handleChangePassword} loading={loading} />
+                                <Button
+                                    label="Отмена"
                                     onPress={() => {
                                         setPasswordModal(false);
-                                        setPasswordForm({
-                                            old_password: '',
-                                            new_password: '',
-                                            confirm_password: '',
-                                        });
+                                        setPasswordForm({ old_password: '', new_password: '', confirm_password: '' });
                                     }}
-                                >
-                                    <Text style={styles.cancelText}>Отмена</Text>
-                                </TouchableOpacity>
+                                    variant="ghost"
+                                    style={{ marginTop: spacing.sm }}
+                                />
                             </View>
                         </KeyboardAvoidingView>
                     </View>
@@ -361,36 +334,21 @@ export default function ProfileScreen({ onClose }) {
                         >
                             <View style={styles.modalContent}>
                                 <Text style={styles.modalTitle}>Изменить email</Text>
-                                <Text style={styles.modalSubtitle}>
-                                    Текущий: {user?.email}
-                                </Text>
-                                <TextInput
-                                    style={styles.modalInput}
-                                    placeholder="Новый email"
+                                <Text style={styles.modalSubtitle}>Текущий: {user?.email}</Text>
+                                <InputField
+                                    label="Новый email"
                                     value={newEmail}
                                     onChangeText={setNewEmail}
+                                    placeholder="example@email.com"
                                     keyboardType="email-address"
-                                    autoCapitalize="none"
                                 />
-                                <TouchableOpacity
-                                    style={styles.modalBtn}
-                                    onPress={handleChangeEmail}
-                                    disabled={loading}
-                                >
-                                    {loading
-                                        ? <ActivityIndicator color="#fff" />
-                                        : <Text style={styles.modalBtnText}>Сохранить</Text>
-                                    }
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => {
-                                        setEmailModal(false);
-                                        setNewEmail('');
-                                    }}
-                                >
-                                    <Text style={styles.cancelText}>Отмена</Text>
-                                </TouchableOpacity>
+                                <Button label="Сохранить" onPress={handleChangeEmail} loading={loading} />
+                                <Button
+                                    label="Отмена"
+                                    onPress={() => { setEmailModal(false); setNewEmail(''); }}
+                                    variant="ghost"
+                                    style={{ marginTop: spacing.sm }}
+                                />
                             </View>
                         </KeyboardAvoidingView>
                     </View>
@@ -401,135 +359,100 @@ export default function ProfileScreen({ onClose }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    back: { color: '#fff', fontSize: 14 },
-    saveBtn: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    headerTitle: { fontSize: 17, fontWeight: '600', color: '#fff' },
+    back: { color: '#fff', fontSize: 15 },
+    saveBtn: { color: '#fff', fontSize: 15, fontWeight: '600' },
     body: { flex: 1 },
     avatarSection: {
         alignItems: 'center',
-        padding: 24,
-        backgroundColor: '#fff',
-        marginBottom: 12,
+        paddingVertical: spacing.xxl,
+        backgroundColor: colors.card,
+        marginBottom: spacing.md,
     },
     avatar: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#4F46E5',
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: spacing.md,
+        ...shadow.lg,
     },
-    avatarText: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-    username: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 },
+    avatarText: { color: '#fff', fontSize: 36, fontWeight: '800' },
+    username: { ...typography.h2, marginBottom: spacing.sm },
     roleBadge: {
-        backgroundColor: '#f0f4ff',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 20,
+        backgroundColor: colors.primaryLight,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
+        marginBottom: spacing.sm,
     },
-    roleText: { color: '#4F46E5', fontWeight: '600', fontSize: 14 },
+    roleText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+    unverifiedBadge: {
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
+        marginTop: spacing.xs,
+    },
+    unverifiedText: { color: colors.warning, fontSize: 13, fontWeight: '600' },
     section: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginHorizontal: 12,
-        marginBottom: 12,
+        backgroundColor: colors.card,
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.md,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        ...shadow.sm,
     },
-    sectionTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#4F46E5',
-        marginBottom: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    field: {
-        paddingVertical: 10,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
-    },
-    fieldLabel: { fontSize: 12, color: '#999', marginBottom: 4 },
-    fieldValue: { fontSize: 15, color: '#1a1a1a', fontWeight: '500' },
-    input: {
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-        borderRadius: 8,
-        padding: 10,
-        fontSize: 15,
-        color: '#1a1a1a',
-        marginTop: 4,
-    },
-    verifiedBadge: {
+    field: { paddingVertical: spacing.sm },
+    fieldLabel: { ...typography.caption, marginBottom: spacing.xs },
+    fieldValue: { ...typography.h4, color: colors.text },
+    statusBadge: {
         alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 20,
-        marginTop: 4,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
+        marginTop: spacing.xs,
     },
-    verifiedText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+    statusBadgeText: { fontSize: 13, fontWeight: '600' },
     actionBtn: {
-        marginTop: 12,
-        padding: 12,
-        backgroundColor: '#f0f4ff',
-        borderRadius: 8,
-        alignItems: 'center',
+        marginTop: spacing.md,
+        paddingVertical: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderLight,
     },
-    actionBtnText: { color: '#4F46E5', fontWeight: '600', fontSize: 14 },
+    actionBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
     logoutBtn: {
-        margin: 12,
-        padding: 16,
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.md,
+        padding: spacing.lg,
         backgroundColor: '#FEF2F2',
-        borderRadius: 12,
+        borderRadius: radius.lg,
         alignItems: 'center',
     },
-    logoutText: { color: '#EF4444', fontWeight: '600', fontSize: 16 },
-    cancelBtn: {
-        marginHorizontal: 12,
-        padding: 14,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        alignItems: 'center',
-    },
-    cancelText: { color: '#666', fontSize: 16 },
+    logoutText: { color: colors.danger, fontWeight: '600', fontSize: 16 },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
     },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-    modalSubtitle: { fontSize: 14, color: '#666', marginBottom: 16 },
-    modalInput: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 14,
-        marginBottom: 12,
-        fontSize: 16,
-    },
-    modalBtn: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    modalBtnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    cancelButton: { alignItems: 'center', padding: 12 },
+    modalTitle: { ...typography.h2, marginBottom: spacing.xs },
+    modalSubtitle: { ...typography.bodySmall, marginBottom: spacing.xl },
 });

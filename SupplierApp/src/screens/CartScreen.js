@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, Alert, TextInput, ScrollView,
-    ActivityIndicator, Image,
+    ActivityIndicator, Image, Modal,
     KeyboardAvoidingView, Platform,
-    TouchableWithoutFeedback, Keyboard, Modal
+    TouchableWithoutFeedback, Keyboard
 } from 'react-native';
 import { useCart } from '../context/CartContext';
 import client from '../api/client';
+import { InputField, Button } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import Icon from '../components/Icon';
 import ProductDetailScreen from './ProductDetailScreen';
 
 export default function CartScreen({ onClose }) {
@@ -24,9 +27,8 @@ export default function CartScreen({ onClose }) {
     const supplierGroups = Object.values(cart);
     const totalItems = supplierGroups.reduce((t, s) => t + s.items.length, 0);
 
-    const getSupplierTotal = (items) => {
-        return items.reduce((t, i) => t + parseFloat(i.product.price) * i.quantity, 0);
-    };
+    const getSupplierTotal = (items) =>
+        items.reduce((t, i) => t + parseFloat(i.product.price) * i.quantity, 0);
 
     const handleCheckout = (supplierGroup) => {
         setSelectedSupplier(supplierGroup);
@@ -50,17 +52,13 @@ export default function CartScreen({ onClose }) {
                 contact_phone: contactPhone,
                 note,
             });
-
             clearSupplierCart(selectedSupplier.supplier.id.toString());
             setCheckoutModal(false);
             setDeliveryAddress('');
             setDeliveryDate('');
             setContactPhone('');
             setNote('');
-            Alert.alert(
-                'Заявка отправлена!',
-                `Ваша заявка поставщику ${selectedSupplier.supplier.name} успешно отправлена.`
-            );
+            Alert.alert('Заявка отправлена', `Поставщик ${selectedSupplier.supplier.name} получил вашу заявку`);
         } catch (e) {
             Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось отправить заявку');
         } finally {
@@ -73,6 +71,7 @@ export default function CartScreen({ onClose }) {
             <TouchableOpacity
                 style={styles.itemClickable}
                 onPress={() => setSelectedProduct(item.product)}
+                activeOpacity={0.7}
             >
                 {item.product.image ? (
                     <Image
@@ -82,16 +81,16 @@ export default function CartScreen({ onClose }) {
                     />
                 ) : (
                     <View style={styles.itemImagePlaceholder}>
-                        <Text style={styles.placeholderText}>Нет фото</Text>
+                        <Icon name="image" size={20} color={colors.textTertiary} />
                     </View>
                 )}
                 <View style={styles.itemInfo}>
-                    <Text style={styles.itemName}>{item.product.name}</Text>
+                    <Text style={styles.itemName} numberOfLines={2}>{item.product.name}</Text>
                     <Text style={styles.itemPrice}>
                         {parseInt(item.product.price).toLocaleString('ru-RU')} ₸ / {item.product.unit}
                     </Text>
                     <Text style={styles.itemTotal}>
-                        Итого: {(parseInt(item.product.price) * item.quantity).toLocaleString('ru-RU')} ₸
+                        {(parseInt(item.product.price) * item.quantity).toLocaleString('ru-RU')} ₸
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -100,7 +99,7 @@ export default function CartScreen({ onClose }) {
                     style={styles.qtyBtn}
                     onPress={() => updateQuantity(supplierId, item.product.id, item.quantity - 1)}
                 >
-                    <Text style={styles.qtyBtnText}>−</Text>
+                    <Icon name="minus" size={14} color={colors.primary} />
                 </TouchableOpacity>
                 <TextInput
                     style={styles.qtyInput}
@@ -120,7 +119,7 @@ export default function CartScreen({ onClose }) {
                     style={styles.qtyBtn}
                     onPress={() => updateQuantity(supplierId, item.product.id, item.quantity + 1)}
                 >
-                    <Text style={styles.qtyBtnText}>+</Text>
+                    <Icon name="plus" size={14} color={colors.primary} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -140,8 +139,9 @@ export default function CartScreen({ onClose }) {
                     </View>
                     <Text style={styles.supplierName}>{supplierGroup.supplier.name}</Text>
                     <TouchableOpacity
+                        style={styles.clearBtn}
                         onPress={() => Alert.alert(
-                            'Очистить',
+                            'Очистить корзину',
                             `Удалить все товары поставщика ${supplierGroup.supplier.name}?`,
                             [
                                 { text: 'Отмена', style: 'cancel' },
@@ -149,7 +149,7 @@ export default function CartScreen({ onClose }) {
                             ]
                         )}
                     >
-                        <Text style={styles.clearText}>Очистить</Text>
+                        <Icon name="trash" size={16} color={colors.danger} />
                     </TouchableOpacity>
                 </View>
 
@@ -157,7 +157,7 @@ export default function CartScreen({ onClose }) {
 
                 <View style={styles.supplierFooter}>
                     <View>
-                        <Text style={styles.supplierTotalLabel}>Итого по заявке:</Text>
+                        <Text style={styles.supplierTotalLabel}>Итого</Text>
                         <Text style={styles.supplierTotal}>
                             {total.toLocaleString('ru-RU')} ₸
                         </Text>
@@ -165,8 +165,10 @@ export default function CartScreen({ onClose }) {
                     <TouchableOpacity
                         style={styles.orderBtn}
                         onPress={() => handleCheckout(supplierGroup)}
+                        activeOpacity={0.8}
                     >
                         <Text style={styles.orderBtnText}>Оформить заявку</Text>
+                        <Icon name="chevronRight" size={16} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -176,22 +178,30 @@ export default function CartScreen({ onClose }) {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.back}>← Назад</Text>
+                <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>
-                    Корзина {totalItems > 0 ? `(${totalItems})` : ''}
-                </Text>
-                <View style={{ width: 60 }} />
+                <View>
+                    <Text style={styles.headerTitle}>Корзина</Text>
+                    {totalItems > 0 && (
+                        <Text style={styles.headerSub}>{totalItems} товар(ов)</Text>
+                    )}
+                </View>
+                <View style={styles.headerBtn} />
             </View>
 
             {supplierGroups.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyIcon}>🛒</Text>
+                    <View style={styles.emptyIconBox}>
+                        <Icon name="cart" size={36} color={colors.textTertiary} />
+                    </View>
                     <Text style={styles.emptyTitle}>Корзина пуста</Text>
                     <Text style={styles.emptySubtitle}>
-                        Добавьте товары из каталога
+                        Добавьте товары из каталога поставщиков
                     </Text>
+                    <TouchableOpacity style={styles.browseBtn} onPress={onClose}>
+                        <Text style={styles.browseBtnText}>Перейти к товарам</Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <FlatList
@@ -199,6 +209,7 @@ export default function CartScreen({ onClose }) {
                     keyExtractor={(item) => item.supplier.id.toString()}
                     renderItem={renderSupplierGroup}
                     contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
                 />
             )}
 
@@ -209,8 +220,9 @@ export default function CartScreen({ onClose }) {
                         <KeyboardAvoidingView
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
-                            <ScrollView>
+                            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                                 <View style={styles.modalContent}>
+                                    <View style={styles.modalHandle} />
                                     <Text style={styles.modalTitle}>Оформление заявки</Text>
                                     <Text style={styles.modalSubtitle}>
                                         {selectedSupplier?.supplier.name}
@@ -222,82 +234,82 @@ export default function CartScreen({ onClose }) {
                                                 <Text style={styles.summaryName} numberOfLines={1}>
                                                     {item.product.name}
                                                 </Text>
-                                                <Text style={styles.summaryQty}>x{item.quantity}</Text>
+                                                <Text style={styles.summaryQty}>×{item.quantity}</Text>
                                                 <Text style={styles.summaryPrice}>
                                                     {(parseInt(item.product.price) * item.quantity).toLocaleString('ru-RU')} ₸
                                                 </Text>
                                             </View>
                                         ))}
                                         <View style={styles.summaryTotalRow}>
-                                            <Text style={styles.summaryTotalLabel}>Итого:</Text>
+                                            <Text style={styles.summaryTotalLabel}>Итого</Text>
                                             <Text style={styles.summaryTotal}>
                                                 {getSupplierTotal(selectedSupplier?.items || []).toLocaleString('ru-RU')} ₸
                                             </Text>
                                         </View>
                                     </View>
 
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Адрес доставки *"
+                                    <InputField
+                                        label="Адрес доставки *"
                                         value={deliveryAddress}
                                         onChangeText={setDeliveryAddress}
+                                        placeholder="Введите адрес доставки"
                                         multiline
+                                        numberOfLines={2}
+                                        autoCapitalize="sentences"
+                                        autoCorrect
                                     />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Желаемая дата доставки (ГГГГ-ММ-ДД)"
+                                    <InputField
+                                        label="Желаемая дата доставки"
                                         value={deliveryDate}
                                         onChangeText={setDeliveryDate}
+                                        placeholder="ГГГГ-ММ-ДД"
+                                        keyboardType="numeric"
                                     />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Контактный телефон"
+                                    <InputField
+                                        label="Контактный телефон"
                                         value={contactPhone}
                                         onChangeText={setContactPhone}
+                                        placeholder="+7 (___) ___-__-__"
                                         keyboardType="phone-pad"
                                     />
-                                    <TextInput
-                                        style={[styles.input, styles.textArea]}
-                                        placeholder="Заметка (необязательно)"
+                                    <InputField
+                                        label="Заметка для поставщика"
                                         value={note}
                                         onChangeText={setNote}
+                                        placeholder="Дополнительные пожелания..."
                                         multiline
                                         numberOfLines={3}
+                                        autoCapitalize="sentences"
+                                        autoCorrect
                                     />
 
-                                    <TouchableOpacity
-                                        style={styles.submitBtn}
+                                    <Button
+                                        label="Отправить заявку"
                                         onPress={handleSubmitOrder}
-                                        disabled={loading}
-                                    >
-                                        {loading
-                                            ? <ActivityIndicator color="#fff" />
-                                            : <Text style={styles.submitBtnText}>Отправить заявку</Text>
-                                        }
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.cancelButton}
+                                        loading={loading}
+                                    />
+                                    <Button
+                                        label="Отмена"
                                         onPress={() => {
                                             Keyboard.dismiss();
                                             setCheckoutModal(false);
                                         }}
-                                    >
-                                        <Text style={styles.cancelText}>Отмена</Text>
-                                    </TouchableOpacity>
+                                        variant="ghost"
+                                        style={{ marginTop: spacing.sm }}
+                                    />
                                 </View>
                             </ScrollView>
                         </KeyboardAvoidingView>
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
+
             {selectedProduct && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
                     <ProductDetailScreen
                         product={selectedProduct}
                         onClose={() => setSelectedProduct(null)}
-                        onAddToCart={(product) => {
-                            setSelectedProduct(null);
-                        }}
+                        onAddToCart={() => setSelectedProduct(null)}
                     />
                 </View>
             )}
@@ -306,127 +318,146 @@ export default function CartScreen({ onClose }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        justifyContent: 'space-between',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    back: { color: '#fff', fontSize: 14 },
-    list: { padding: 12 },
+    headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', textAlign: 'center' },
+    headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', textAlign: 'center' },
+    list: { padding: spacing.lg },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 40,
+        padding: spacing.xxxl,
     },
-    emptyIcon: { fontSize: 64, marginBottom: 16 },
-    emptyTitle: { fontSize: 20, fontWeight: '600', color: '#1a1a1a', marginBottom: 8 },
-    emptySubtitle: { fontSize: 14, color: '#999', textAlign: 'center' },
+    emptyIconBox: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.xl,
+    },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+    emptySubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: spacing.xl },
+    browseBtn: {
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xxl,
+        paddingVertical: spacing.md,
+        borderRadius: radius.full,
+    },
+    browseBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
     supplierGroup: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        marginBottom: 16,
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        marginBottom: spacing.lg,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        ...shadow.sm,
     },
     supplierHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 14,
-        backgroundColor: '#f0f4ff',
+        padding: spacing.lg,
+        backgroundColor: colors.primaryLight,
         borderBottomWidth: 1,
-        borderBottomColor: '#e0e8ff',
+        borderBottomColor: colors.border,
     },
     supplierAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#4F46E5',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 10,
+        marginRight: spacing.md,
     },
-    supplierAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-    supplierName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    clearText: { color: '#EF4444', fontSize: 13 },
+    supplierAvatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    supplierName: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text },
+    clearBtn: { padding: spacing.xs },
     cartItem: {
         flexDirection: 'row',
-        padding: 12,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#eee',
+        alignItems: 'center',
+        padding: spacing.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.borderLight,
+    },
+    itemClickable: {
+        flexDirection: 'row',
+        flex: 1,
         alignItems: 'center',
     },
     itemImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-        marginRight: 12,
+        width: 64,
+        height: 64,
+        borderRadius: radius.md,
+        marginRight: spacing.md,
     },
     itemImagePlaceholder: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        width: 64,
+        height: 64,
+        borderRadius: radius.md,
+        backgroundColor: colors.borderLight,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: spacing.md,
     },
-    placeholderText: { fontSize: 10, color: '#999' },
     itemInfo: { flex: 1 },
-    itemName: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-    itemPrice: { fontSize: 12, color: '#666', marginTop: 2 },
-    itemTotal: { fontSize: 13, fontWeight: '600', color: '#4F46E5', marginTop: 2 },
+    itemName: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 4 },
+    itemPrice: { fontSize: 12, color: colors.textSecondary, marginBottom: 2 },
+    itemTotal: { fontSize: 13, fontWeight: '700', color: colors.primary },
     quantityControl: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: spacing.xs,
+        marginLeft: spacing.md,
     },
     qtyBtn: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: '#4F46E5',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    qtyBtnText: { color: '#fff', fontSize: 18, fontWeight: '600', lineHeight: 20 },
-    qtyValue: { fontSize: 16, fontWeight: '600', minWidth: 24, textAlign: 'center' },
+    qtyInput: {
+        width: 40,
+        height: 32,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        borderRadius: radius.sm,
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text,
+        textAlign: 'center',
+        padding: 0,
+    },
     supplierFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 14,
-        backgroundColor: '#f9f9f9',
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
+        padding: spacing.lg,
+        backgroundColor: colors.background,
     },
-    qtyInput: {
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-        borderRadius: 6,
-        width: 48,
-        height: 32,
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1a1a1a',
-        textAlign: 'center',
-        padding: 0,
-    },
-    supplierTotalLabel: { fontSize: 13, color: '#666' },
-    supplierTotal: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
+    supplierTotalLabel: { fontSize: 12, color: colors.textSecondary },
+    supplierTotal: { fontSize: 20, fontWeight: '800', color: colors.text },
     orderBtn: {
-        backgroundColor: '#4F46E5',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        gap: spacing.xs,
     },
     orderBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
     modalOverlay: {
@@ -435,64 +466,44 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
+        paddingTop: spacing.lg,
     },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-    modalSubtitle: { fontSize: 14, color: '#4F46E5', marginBottom: 16 },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: colors.border,
+        alignSelf: 'center',
+        marginBottom: spacing.xl,
+    },
+    modalTitle: { ...typography.h2, marginBottom: spacing.xs },
+    modalSubtitle: { ...typography.bodySmall, color: colors.primary, marginBottom: spacing.xl },
     orderSummary: {
-        backgroundColor: '#f5f5f5',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 16,
+        backgroundColor: colors.background,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.xl,
     },
     summaryRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 4,
+        paddingVertical: spacing.xs,
     },
-    summaryName: { flex: 1, fontSize: 13, color: '#444' },
-    summaryQty: { fontSize: 13, color: '#666', marginHorizontal: 8 },
-    summaryPrice: { fontSize: 13, fontWeight: '600', color: '#1a1a1a' },
+    summaryName: { flex: 1, fontSize: 13, color: colors.textSecondary },
+    summaryQty: { fontSize: 13, color: colors.textTertiary, marginHorizontal: spacing.sm },
+    summaryPrice: { fontSize: 13, fontWeight: '600', color: colors.text },
     summaryTotalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 8,
-        paddingTop: 8,
+        marginTop: spacing.md,
+        paddingTop: spacing.md,
         borderTopWidth: 1,
-        borderTopColor: '#ddd',
+        borderTopColor: colors.border,
     },
-    summaryTotalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    summaryTotal: { fontSize: 15, fontWeight: 'bold', color: '#4F46E5' },
-    input: {
-        borderWidth: 1,
-        borderColor: '#c4c4c4',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 12,
-        fontSize: 16,
-    },
-    textArea: { height: 80, textAlignVertical: 'top' },
-    submitBtn: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    submitBtnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    cancelButton: { alignItems: 'center', padding: 12 },
-    cancelText: { color: '#666', fontSize: 16 },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    itemClickable: {
-        flexDirection: 'row',
-        flex: 1,
-        alignItems: 'center',
-    },
+    summaryTotalLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+    summaryTotal: { fontSize: 16, fontWeight: '800', color: colors.primary },
 });

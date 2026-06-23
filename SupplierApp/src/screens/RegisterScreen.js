@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity,
-    StyleSheet, Alert, ActivityIndicator, ScrollView
+    View, Text, TouchableOpacity, StyleSheet,
+    ScrollView, KeyboardAvoidingView, Platform, Alert
 } from 'react-native';
 import { register } from '../api/auth';
+import { InputField, Button } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
 
 export default function RegisterScreen({ navigation }) {
     const [form, setForm] = useState({
@@ -22,7 +24,11 @@ export default function RegisterScreen({ navigation }) {
 
     const handleRegister = async () => {
         if (!form.username || !form.email || !form.password) {
-            Alert.alert('Ошибка', 'Пожалуйста, заполните обязательные поля');
+            Alert.alert('Ошибка', 'Заполните обязательные поля');
+            return;
+        }
+        if (form.password.length < 8) {
+            Alert.alert('Ошибка', 'Пароль должен быть не менее 8 символов');
             return;
         }
         setLoading(true);
@@ -32,163 +38,182 @@ export default function RegisterScreen({ navigation }) {
                 { text: 'OK', onPress: () => navigation.navigate('Login') }
             ]);
         } catch (error) {
-            Alert.alert('Ошибка', 'Регистрация не удалась. Попробуйте другой логин.');
+            const msg = error.response?.data;
+            let errorText = 'Регистрация не удалась.';
+            if (msg?.username) errorText = 'Это имя пользователя уже занято.';
+            else if (msg?.email) errorText = 'Этот email уже используется.';
+            Alert.alert('Ошибка', errorText);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.title}>Создать аккаунт</Text>
-            <Text style={styles.subtitle}>Зарегистрируйтесь как клиент или поставщик</Text>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Имя пользователя *"
-                value={form.username}
-                onChangeText={(v) => handleChange('username', v)}
-                autoCapitalize="none"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Email *"
-                value={form.email}
-                onChangeText={(v) => handleChange('email', v)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Пароль *"
-                value={form.password}
-                onChangeText={(v) => handleChange('password', v)}
-                secureTextEntry
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Название компании"
-                value={form.company_name}
-                onChangeText={(v) => handleChange('company_name', v)}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Телефон"
-                value={form.phone}
-                onChangeText={(v) => handleChange('phone', v)}
-                keyboardType="phone-pad"
-            />
-
-            <Text style={styles.label}>Я являюсь:</Text>
-            <View style={styles.roleContainer}>
-                <TouchableOpacity
-                    style={[styles.roleButton, form.role === 'client' && styles.roleActive]}
-                    onPress={() => handleChange('role', 'client')}
-                >
-                    <Text style={[styles.roleText, form.role === 'client' && styles.roleTextActive]}>
-                        Клиент
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.roleButton, form.role === 'supplier' && styles.roleActive]}
-                    onPress={() => handleChange('role', 'supplier')}
-                >
-                    <Text style={[styles.roleText, form.role === 'supplier' && styles.roleTextActive]}>
-                        Поставщик
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={handleRegister}
-                disabled={loading}
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
             >
-                {loading
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.buttonText}>Создать аккаунт</Text>
-                }
-            </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.backBtn}
+                    onPress={() => navigation.navigate('Login')}
+                >
+                    <Text style={styles.backBtnText}>← Назад</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.link}>Уже есть аккаунт? Войти</Text>
-            </TouchableOpacity>
-        </ScrollView>
+                <Text style={styles.title}>Создать аккаунт</Text>
+                <Text style={styles.subtitle}>Заполните данные для регистрации</Text>
+
+                <View style={styles.roleSection}>
+                    <Text style={styles.roleLabel}>Я являюсь:</Text>
+                    <View style={styles.roleRow}>
+                        <TouchableOpacity
+                            style={[styles.roleBtn, form.role === 'client' && styles.roleBtnActive]}
+                            onPress={() => handleChange('role', 'client')}
+                        >
+                            <Text style={styles.roleIcon}>🛒</Text>
+                            <Text style={[styles.roleBtnText, form.role === 'client' && styles.roleBtnTextActive]}>
+                                Клиент
+                            </Text>
+                            <Text style={[styles.roleDesc, form.role === 'client' && { color: colors.primary }]}>
+                                Покупаю товары
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.roleBtn, form.role === 'supplier' && styles.roleBtnActive]}
+                            onPress={() => handleChange('role', 'supplier')}
+                        >
+                            <Text style={styles.roleIcon}>🏭</Text>
+                            <Text style={[styles.roleBtnText, form.role === 'supplier' && styles.roleBtnTextActive]}>
+                                Поставщик
+                            </Text>
+                            <Text style={[styles.roleDesc, form.role === 'supplier' && { color: colors.primary }]}>
+                                Продаю товары
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={styles.form}>
+                    <Text style={styles.sectionLabel}>Основные данные</Text>
+                    <InputField
+                        label="Имя пользователя *"
+                        value={form.username}
+                        onChangeText={(v) => handleChange('username', v)}
+                        placeholder="Введите имя пользователя"
+                        autoCapitalize="none"
+                    />
+                    <InputField
+                        label="Email *"
+                        value={form.email}
+                        onChangeText={(v) => handleChange('email', v)}
+                        placeholder="Введите email адрес"
+                        keyboardType="email-address"
+                    />
+                    <InputField
+                        label="Пароль * (мин. 8 символов)"
+                        value={form.password}
+                        onChangeText={(v) => handleChange('password', v)}
+                        placeholder="Придумайте пароль"
+                        secureTextEntry
+                    />
+
+                    <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>
+                        Информация о компании
+                    </Text>
+                    <InputField
+                        label="Название компании"
+                        value={form.company_name}
+                        onChangeText={(v) => handleChange('company_name', v)}
+                        placeholder="Введите название компании"
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                    />
+                    <InputField
+                        label="Телефон"
+                        value={form.phone}
+                        onChangeText={(v) => handleChange('phone', v)}
+                        placeholder="+7 (___) ___-__-__"
+                        keyboardType="phone-pad"
+                    />
+                </View>
+
+                <Button
+                    label="Создать аккаунт"
+                    onPress={handleRegister}
+                    loading={loading}
+                    style={{ marginTop: spacing.xl }}
+                />
+
+                <TouchableOpacity
+                    style={styles.loginLink}
+                    onPress={() => navigation.navigate('Login')}
+                >
+                    <Text style={styles.loginLinkText}>
+                        Уже есть аккаунт?{' '}
+                        <Text style={styles.loginLinkBold}>Войти</Text>
+                    </Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: {
         flexGrow: 1,
-        justifyContent: 'center',
-        padding: 24,
-        backgroundColor: '#fff',
+        paddingHorizontal: spacing.xxl,
+        paddingTop: STATUS_TOP + spacing.md,
+        paddingBottom: spacing.xxxl,
     },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#1a1a1a',
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 32,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 14,
-        marginBottom: 16,
-        fontSize: 16,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 12,
-        color: '#1a1a1a',
-    },
-    roleContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    roleButton: {
+    backBtn: { marginBottom: spacing.xl },
+    backBtnText: { color: colors.primary, fontSize: 15, fontWeight: '500' },
+    title: { ...typography.h1, marginBottom: spacing.xs },
+    subtitle: { ...typography.bodySmall, marginBottom: spacing.xl },
+    roleSection: { marginBottom: spacing.xl },
+    roleLabel: { ...typography.h4, marginBottom: spacing.md },
+    roleRow: { flexDirection: 'row', gap: spacing.md },
+    roleBtn: {
         flex: 1,
-        padding: 14,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ddd',
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
         alignItems: 'center',
+        borderWidth: 2,
+        borderColor: colors.border,
     },
-    roleActive: {
-        backgroundColor: '#4F46E5',
-        borderColor: '#4F46E5',
+    roleBtnActive: {
+        borderColor: colors.primary,
+        backgroundColor: colors.primaryLight,
     },
-    roleText: {
-        fontSize: 16,
-        color: '#666',
-        fontWeight: '600',
+    roleIcon: { fontSize: 28, marginBottom: spacing.sm },
+    roleBtnText: { fontSize: 15, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 },
+    roleBtnTextActive: { color: colors.primary },
+    roleDesc: { fontSize: 12, color: colors.textTertiary },
+    form: {
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        padding: spacing.xxl,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    roleTextActive: {
-        color: '#fff',
+    sectionLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: spacing.md,
     },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    link: {
-        textAlign: 'center',
-        color: '#4F46E5',
-        fontSize: 14,
-    },
+    loginLink: { marginTop: spacing.xl, alignItems: 'center' },
+    loginLinkText: { ...typography.bodySmall },
+    loginLinkBold: { color: colors.primary, fontWeight: '600' },
 });

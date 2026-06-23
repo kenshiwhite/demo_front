@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity,
-    StyleSheet, ActivityIndicator
+    StyleSheet, ActivityIndicator, Animated
 } from 'react-native';
 import client from '../api/client';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import Icon from '../components/Icon';
 
 export default function NotificationsScreen({ onClose }) {
     const [notifications, setNotifications] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
@@ -22,7 +24,7 @@ export default function NotificationsScreen({ onClose }) {
             const countResponse = await client.get('/api/notifications/unread_count/');
             setUnreadCount(countResponse.data.unread_count);
         } catch (e) {
-            console.log('Не удалось загрузить уведомления');
+            console.log('Could not load notifications');
         } finally {
             setLoading(false);
         }
@@ -32,74 +34,95 @@ export default function NotificationsScreen({ onClose }) {
         try {
             await client.post(`/api/notifications/${id}/mark_read/`);
             loadNotifications();
-        } catch (e) {
-            console.log('Не удалось отметить как прочитанное');
-        }
+        } catch (e) {}
     };
 
     const handleMarkAllRead = async () => {
         try {
             await client.post('/api/notifications/mark_all_read/');
             loadNotifications();
-        } catch (e) {
-            console.log('Не удалось отметить все как прочитанные');
-        }
+        } catch (e) {}
     };
 
-    const getTypeColor = (type) => {
-        const colors = {
-            new_request: '#4F46E5',
-            request_accepted: '#10B981',
-            request_declined: '#EF4444',
-            request_fulfilled: '#6366F1',
-            new_response: '#F59E0B',
+    const getTypeConfig = (type) => {
+        const configs = {
+            new_request: { color: colors.primary, icon: 'package' },
+            request_accepted: { color: colors.success, icon: 'check' },
+            request_declined: { color: colors.danger, icon: 'x' },
+            request_fulfilled: { color: colors.purple, icon: 'truck' },
+            new_response: { color: colors.warning, icon: 'mail' },
         };
-        return colors[type] || '#999';
+        return configs[type] || { color: colors.textSecondary, icon: 'bell' };
     };
 
-    const renderNotification = ({ item }) => (
-        <TouchableOpacity
-            style={[styles.card, !item.is_read && styles.unread]}
-            onPress={() => handleMarkRead(item.id)}
-        >
-            <View style={[styles.dot, { backgroundColor: getTypeColor(item.notification_type) }]} />
-            <View style={styles.content}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.message}>{item.message}</Text>
-                <Text style={styles.time}>
-                    {new Date(item.created_at).toLocaleDateString('ru-RU')}
-                </Text>
-            </View>
-            {!item.is_read && <View style={styles.unreadDot} />}
-        </TouchableOpacity>
-    );
+    const renderNotification = ({ item, index }) => {
+        const config = getTypeConfig(item.notification_type);
+        return (
+            <TouchableOpacity
+                style={[styles.card, !item.is_read && styles.unreadCard]}
+                onPress={() => handleMarkRead(item.id)}
+                activeOpacity={0.7}
+            >
+                <View style={[styles.iconBox, { backgroundColor: config.color + '18' }]}>
+                    <Icon name={config.icon} size={18} color={config.color} />
+                </View>
+                <View style={styles.content}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <Text style={styles.message}>{item.message}</Text>
+                    <View style={styles.timeRow}>
+                        <Icon name="clock" size={12} color={colors.textTertiary} />
+                        <Text style={styles.time}>
+                            {new Date(item.created_at).toLocaleDateString('ru-RU', {
+                                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                            })}
+                        </Text>
+                    </View>
+                </View>
+                {!item.is_read && <View style={styles.unreadDot} />}
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.close}>← Назад</Text>
+                <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>
-                    Уведомления {unreadCount > 0 ? `(${unreadCount})` : ''}
-                </Text>
-                {unreadCount > 0 && (
-                    <TouchableOpacity onPress={handleMarkAllRead}>
-                        <Text style={styles.markAll}>Прочитать все</Text>
+                <View>
+                    <Text style={styles.headerTitle}>Уведомления</Text>
+                    {unreadCount > 0 && (
+                        <Text style={styles.headerSub}>{unreadCount} непрочитанных</Text>
+                    )}
+                </View>
+                {unreadCount > 0 ? (
+                    <TouchableOpacity onPress={handleMarkAllRead} style={styles.headerBtn}>
+                        <Icon name="check" size={20} color="#fff" />
                     </TouchableOpacity>
-                )}
+                ) : <View style={styles.headerBtn} />}
             </View>
 
             {loading ? (
-                <ActivityIndicator style={styles.loader} size="large" color="#4F46E5" />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
             ) : (
                 <FlatList
                     data={notifications}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderNotification}
                     contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>Уведомлений пока нет</Text>
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconBox}>
+                                <Icon name="bell" size={32} color={colors.textTertiary} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Нет уведомлений</Text>
+                            <Text style={styles.emptySubtitle}>
+                                Здесь появятся уведомления о заявках и ответах
+                            </Text>
+                        </View>
                     }
                 />
             )}
@@ -108,53 +131,67 @@ export default function NotificationsScreen({ onClose }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        justifyContent: 'space-between',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    close: { color: '#fff', fontSize: 14 },
-    markAll: { color: '#fff', fontSize: 13 },
-    list: { padding: 12 },
-    loader: { marginTop: 40 },
-    empty: { textAlign: 'center', color: '#999', marginTop: 40 },
+    headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', textAlign: 'center' },
+    headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', textAlign: 'center' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    list: { padding: spacing.lg },
     card: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 10,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        alignItems: 'flex-start',
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        ...shadow.sm,
     },
-    unread: {
-        backgroundColor: '#f0f4ff',
+    unreadCard: {
         borderLeftWidth: 3,
-        borderLeftColor: '#4F46E5',
+        borderLeftColor: colors.primary,
     },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        marginRight: 12,
+    iconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.md,
+        flexShrink: 0,
     },
     content: { flex: 1 },
-    title: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    message: { fontSize: 13, color: '#666', marginTop: 4 },
-    time: { fontSize: 12, color: '#999', marginTop: 6 },
+    title: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 4 },
+    message: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 6 },
+    timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    time: { fontSize: 11, color: colors.textTertiary },
     unreadDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#4F46E5',
-        marginLeft: 8,
+        backgroundColor: colors.primary,
+        marginLeft: spacing.sm,
+        marginTop: spacing.xs,
+        flexShrink: 0,
     },
+    emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: spacing.xxxl },
+    emptyIconBox: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.xl,
+    },
+    emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm },
+    emptySubtitle: { fontSize: 14, color: colors.textTertiary, textAlign: 'center', lineHeight: 20 },
 });

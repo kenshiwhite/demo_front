@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity,
-    StyleSheet, Alert, ActivityIndicator
+    View, Text, TouchableOpacity, StyleSheet,
+    ScrollView, KeyboardAvoidingView, Platform, Alert
 } from 'react-native';
 import { login } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
+import { InputField, Button } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
 
 export default function LoginScreen({ navigation }) {
     const [username, setUsername] = useState('');
@@ -23,6 +25,12 @@ export default function LoginScreen({ navigation }) {
             await login(username, password);
             const response = await client.get('/api/auth/me/');
             await signIn(response.data);
+            if (!response.data.is_email_verified) {
+                const codeResponse = await client.post('/api/auth/resend-verification/');
+                if (codeResponse.data.code) {
+                    Alert.alert('Подтвердите email', `Ваш код подтверждения: ${codeResponse.data.code}`);
+                }
+            }
         } catch (error) {
             Alert.alert('Ошибка', 'Неверный логин или пароль');
         } finally {
@@ -31,84 +39,101 @@ export default function LoginScreen({ navigation }) {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Добро пожаловать</Text>
-            <Text style={styles.subtitle}>Войдите в свой аккаунт</Text>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Имя пользователя"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Пароль"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-            />
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={handleLogin}
-                disabled={loading}
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
             >
-                {loading
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.buttonText}>Войти</Text>
-                }
-            </TouchableOpacity>
+                <View style={styles.logoSection}>
+                    <View style={styles.logo}>
+                        <Text style={styles.logoText}>ON</Text>
+                    </View>
+                    <Text style={styles.appName}>OnSupply</Text>
+                    <Text style={styles.tagline}>Платформа для поставщиков и клиентов</Text>
+                </View>
 
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.link}>Нет аккаунта? Зарегистрироваться</Text>
-            </TouchableOpacity>
-        </View>
+                <View style={styles.form}>
+                    <Text style={styles.formTitle}>Вход в аккаунт</Text>
+
+                    <InputField
+                        label="Имя пользователя"
+                        value={username}
+                        onChangeText={setUsername}
+                        placeholder="Введите имя пользователя"
+                        autoCapitalize="none"
+                    />
+                    <InputField
+                        label="Пароль"
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Введите пароль"
+                        secureTextEntry
+                    />
+
+                    <Button
+                        label="Войти"
+                        onPress={handleLogin}
+                        loading={loading}
+                        style={{ marginTop: spacing.sm }}
+                    />
+
+                    <TouchableOpacity
+                        style={styles.registerLink}
+                        onPress={() => navigation.navigate('Register')}
+                    >
+                        <Text style={styles.registerLinkText}>
+                            Нет аккаунта?{' '}
+                            <Text style={styles.registerLinkBold}>Зарегистрироваться</Text>
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: {
+        flexGrow: 1,
+        paddingHorizontal: spacing.xxl,
+        paddingTop: STATUS_TOP + spacing.xl,
+        paddingBottom: spacing.xxxl,
+    },
+    logoSection: { alignItems: 'center', marginBottom: spacing.xxxl + spacing.xl },
+    logo: {
+        width: 72,
+        height: 72,
+        borderRadius: 20,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
-        padding: 24,
-        backgroundColor: '#fff',
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#1a1a1a',
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 32,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 14,
-        marginBottom: 16,
-        fontSize: 16,
-    },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: spacing.md,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
     },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+    logoText: { color: '#fff', fontSize: 26, fontWeight: '800' },
+    appName: { fontSize: 26, fontWeight: '800', color: colors.text, marginBottom: spacing.xs },
+    tagline: { ...typography.bodySmall, textAlign: 'center' },
+    form: {
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        padding: spacing.xxl,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 4,
     },
-    link: {
-        textAlign: 'center',
-        color: '#4F46E5',
-        fontSize: 14,
-    },
+    formTitle: { ...typography.h2, marginBottom: spacing.xl },
+    registerLink: { marginTop: spacing.lg, alignItems: 'center' },
+    registerLinkText: { ...typography.bodySmall },
+    registerLinkBold: { color: colors.primary, fontWeight: '600' },
 });

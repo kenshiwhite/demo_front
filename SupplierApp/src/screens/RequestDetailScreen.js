@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, Alert, TextInput, Image
+    StyleSheet, Alert, Image
 } from 'react-native';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { InputField, Button, SectionTitle, Divider } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import Icon from '../components/Icon';
 
 export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     const { user } = useAuth();
@@ -19,24 +22,14 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
         contact_phone: request.contact_phone || '',
     });
 
-    const getStatusColor = (status) => {
-        const colors = {
-            pending: '#F59E0B',
-            accepted: '#10B981',
-            declined: '#EF4444',
-            fulfilled: '#6366F1',
+    const getStatusConfig = (status) => {
+        const configs = {
+            pending: { label: 'Ожидает', color: colors.warning, bg: '#FEF3C7', icon: 'clock' },
+            accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
+            declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
+            fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
         };
-        return colors[status] || '#999';
-    };
-
-    const getStatusText = (status) => {
-        const texts = {
-            pending: 'Ожидает',
-            accepted: 'Принято',
-            declined: 'Отклонено',
-            fulfilled: 'Выполнено',
-        };
-        return texts[status] || status;
+        return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };
 
     const handleSave = async () => {
@@ -60,55 +53,60 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     };
 
     const items = request.items || [];
-    const totalPrice = request.total_price
-        ? parseInt(request.total_price).toLocaleString('ru-RU')
-        : items.reduce((t, i) => t + parseFloat(i.price_at_request || 0) * i.quantity, 0).toLocaleString('ru-RU');
+    const statusConfig = getStatusConfig(request.status);
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.back}>← Назад</Text>
+                <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Заявка #{request.id}</Text>
-                {isEditable && !editing && (
-                    <TouchableOpacity onPress={() => setEditing(true)}>
-                        <Text style={styles.editBtn}>Изменить</Text>
+                {isEditable && !editing ? (
+                    <TouchableOpacity onPress={() => setEditing(true)} style={styles.headerBtn}>
+                        <Icon name="edit" size={18} color="#fff" />
                     </TouchableOpacity>
-                )}
-                {editing && (
-                    <TouchableOpacity onPress={handleSave}>
-                        <Text style={styles.editBtn}>Сохранить</Text>
+                ) : editing ? (
+                    <TouchableOpacity onPress={handleSave} style={styles.headerBtn}>
+                        <Icon name="check" size={20} color="#fff" />
                     </TouchableOpacity>
-                )}
-                {!isEditable && !editing && (
-                    <View style={{ width: 60 }} />
+                ) : (
+                    <View style={styles.headerBtn} />
                 )}
             </View>
 
-            <ScrollView style={styles.body}>
-                {/* Status */}
-                <View style={styles.statusRow}>
-                    <Text style={styles.sectionLabel}>Статус</Text>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor(request.status) }]}>
-                        <Text style={styles.badgeText}>{getStatusText(request.status)}</Text>
+            <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+                {/* Status banner */}
+                <View style={[styles.statusBanner, { backgroundColor: statusConfig.bg }]}>
+                    <View style={[styles.statusIconBox, { backgroundColor: statusConfig.color + '20' }]}>
+                        <Icon name={statusConfig.icon} size={20} color={statusConfig.color} />
+                    </View>
+                    <View>
+                        <Text style={styles.statusLabel}>Статус заявки</Text>
+                        <Text style={[styles.statusValue, { color: statusConfig.color }]}>
+                            {statusConfig.label}
+                        </Text>
+                    </View>
+                    <View style={styles.statusDate}>
+                        <Text style={styles.statusDateLabel}>Создана</Text>
+                        <Text style={styles.statusDateValue}>
+                            {new Date(request.created_at).toLocaleDateString('ru-RU')}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Supplier info */}
+                {/* Supplier */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Поставщик</Text>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Компания:</Text>
-                        <Text style={styles.value}>
-                            {request.supplier_name || '—'}
-                        </Text>
+                    <SectionTitle label="Поставщик" />
+                    <View style={styles.infoRow}>
+                        <Icon name="building" size={16} color={colors.textTertiary} />
+                        <Text style={styles.infoText}>{request.supplier_name || '—'}</Text>
                     </View>
                 </View>
 
                 {/* Items */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Товары</Text>
+                    <SectionTitle label={`Товары (${items.length})`} />
                     {items.length === 0 ? (
                         <Text style={styles.emptyText}>Нет товаров</Text>
                     ) : (
@@ -122,7 +120,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                                     />
                                 ) : (
                                     <View style={styles.itemImagePlaceholder}>
-                                        <Text style={styles.placeholderText}>Нет фото</Text>
+                                        <Icon name="package" size={16} color={colors.textTertiary} />
                                     </View>
                                 )}
                                 <View style={styles.itemInfo}>
@@ -131,82 +129,87 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                                         {parseInt(item.price_at_request).toLocaleString('ru-RU')} ₸ / {item.product_unit}
                                     </Text>
                                     <Text style={styles.itemDetail}>
-                                        Кол-во: {item.quantity} {item.product_unit}
-                                    </Text>
-                                    <Text style={styles.itemTotal}>
-                                        Итого: {parseInt(item.total).toLocaleString('ru-RU')} ₸
+                                        Количество: {item.quantity} {item.product_unit}
                                     </Text>
                                 </View>
+                                <Text style={styles.itemTotal}>
+                                    {parseInt(item.total).toLocaleString('ru-RU')} ₸
+                                </Text>
                             </View>
                         ))
                     )}
                     <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Общая сумма:</Text>
-                        <Text style={styles.totalValue}>{totalPrice} ₸</Text>
+                        <Text style={styles.totalLabel}>Общая сумма</Text>
+                        <Text style={styles.totalValue}>
+                            {request.total_price
+                                ? parseInt(request.total_price).toLocaleString('ru-RU')
+                                : '—'} ₸
+                        </Text>
                     </View>
                 </View>
 
                 {/* Client info */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Информация о клиенте</Text>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Клиент:</Text>
-                        <Text style={styles.value}>{request.client_name || '—'}</Text>
+                    <SectionTitle label="Клиент" />
+                    <View style={styles.infoRow}>
+                        <Icon name="user" size={16} color={colors.textTertiary} />
+                        <Text style={styles.infoText}>{request.client_name || '—'}</Text>
                     </View>
                     {request.client_company ? (
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Компания:</Text>
-                            <Text style={styles.value}>{request.client_company}</Text>
+                        <View style={styles.infoRow}>
+                            <Icon name="building" size={16} color={colors.textTertiary} />
+                            <Text style={styles.infoText}>{request.client_company}</Text>
                         </View>
                     ) : null}
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Телефон:</Text>
+                    <View style={styles.infoRow}>
+                        <Icon name="phone" size={16} color={colors.textTertiary} />
                         {editing ? (
-                            <TextInput
-                                style={styles.inlineInput}
+                            <InputField
                                 value={form.contact_phone}
                                 onChangeText={(v) => setForm(p => ({ ...p, contact_phone: v }))}
+                                placeholder="+7 (___) ___-__-__"
                                 keyboardType="phone-pad"
-                                placeholder="Введите телефон"
+                                style={{ flex: 1, marginBottom: 0, marginLeft: spacing.sm }}
                             />
                         ) : (
-                            <Text style={styles.value}>
+                            <Text style={styles.infoText}>
                                 {request.contact_phone || request.client_phone || '—'}
                             </Text>
                         )}
                     </View>
                 </View>
 
-                {/* Delivery info */}
+                {/* Delivery */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Доставка</Text>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Адрес:</Text>
+                    <SectionTitle label="Доставка" />
+                    <View style={styles.infoRow}>
+                        <Icon name="map_pin" size={16} color={colors.textTertiary} />
                         {editing ? (
-                            <TextInput
-                                style={[styles.inlineInput, { flex: 1 }]}
+                            <InputField
                                 value={form.delivery_address}
                                 onChangeText={(v) => setForm(p => ({ ...p, delivery_address: v }))}
+                                placeholder="Адрес доставки"
                                 multiline
-                                placeholder="Введите адрес"
+                                style={{ flex: 1, marginBottom: 0, marginLeft: spacing.sm }}
+                                autoCapitalize="sentences"
+                                autoCorrect
                             />
                         ) : (
-                            <Text style={[styles.value, { flex: 1, textAlign: 'right' }]}>
-                                {request.delivery_address || '—'}
-                            </Text>
+                            <Text style={styles.infoText}>{request.delivery_address || '—'}</Text>
                         )}
                     </View>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Дата доставки:</Text>
+                    <View style={styles.infoRow}>
+                        <Icon name="calendar" size={16} color={colors.textTertiary} />
                         {editing ? (
-                            <TextInput
-                                style={styles.inlineInput}
+                            <InputField
                                 value={form.desired_delivery_date}
                                 onChangeText={(v) => setForm(p => ({ ...p, desired_delivery_date: v }))}
                                 placeholder="ГГГГ-ММ-ДД"
+                                keyboardType="numeric"
+                                style={{ flex: 1, marginBottom: 0, marginLeft: spacing.sm }}
                             />
                         ) : (
-                            <Text style={styles.value}>
+                            <Text style={styles.infoText}>
                                 {request.desired_delivery_date
                                     ? new Date(request.desired_delivery_date).toLocaleDateString('ru-RU')
                                     : '—'}
@@ -217,55 +220,38 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
 
                 {/* Note */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Заметка</Text>
+                    <SectionTitle label="Заметка" />
                     {editing ? (
-                        <TextInput
-                            style={[styles.inlineInput, { width: '100%', minHeight: 80 }]}
+                        <InputField
                             value={form.note}
                             onChangeText={(v) => setForm(p => ({ ...p, note: v }))}
+                            placeholder="Заметка для поставщика..."
                             multiline
-                            placeholder="Заметка (необязательно)"
+                            numberOfLines={3}
+                            autoCapitalize="sentences"
+                            autoCorrect
                         />
                     ) : (
-                        <Text style={styles.noteText}>
-                            {request.note || 'Нет заметки'}
-                        </Text>
+                        <Text style={styles.noteText}>{request.note || 'Нет заметки'}</Text>
                     )}
-                </View>
-
-                {/* Dates */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Даты</Text>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Создана:</Text>
-                        <Text style={styles.value}>
-                            {new Date(request.created_at).toLocaleString('ru-RU')}
-                        </Text>
-                    </View>
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Обновлена:</Text>
-                        <Text style={styles.value}>
-                            {new Date(request.updated_at).toLocaleString('ru-RU')}
-                        </Text>
-                    </View>
                 </View>
 
                 {/* Supplier response */}
                 {request.response && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Ответ поставщика</Text>
+                    <View style={[styles.section, styles.responseSection]}>
+                        <SectionTitle label="Ответ поставщика" />
                         <Text style={styles.responseText}>{request.response.message}</Text>
                         {request.response.offered_price && (
-                            <View style={styles.row}>
-                                <Text style={styles.label}>Предложенная цена:</Text>
-                                <Text style={[styles.value, { color: '#10B981', fontWeight: '700' }]}>
+                            <View style={styles.offeredPriceRow}>
+                                <Text style={styles.offeredPriceLabel}>Предложенная цена</Text>
+                                <Text style={styles.offeredPriceValue}>
                                     {parseInt(request.response.offered_price).toLocaleString('ru-RU')} ₸
                                 </Text>
                             </View>
                         )}
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Дата ответа:</Text>
-                            <Text style={styles.value}>
+                        <View style={styles.infoRow}>
+                            <Icon name="clock" size={14} color={colors.textTertiary} />
+                            <Text style={styles.infoText}>
                                 {new Date(request.response.created_at).toLocaleString('ru-RU')}
                             </Text>
                         </View>
@@ -273,12 +259,12 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                 )}
 
                 {editing && (
-                    <TouchableOpacity
-                        style={styles.cancelEditBtn}
+                    <Button
+                        label="Отмена"
                         onPress={() => setEditing(false)}
-                    >
-                        <Text style={styles.cancelEditText}>Отмена</Text>
-                    </TouchableOpacity>
+                        variant="secondary"
+                        style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+                    />
                 )}
 
                 <View style={{ height: 40 }} />
@@ -288,121 +274,98 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        justifyContent: 'space-between',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    back: { color: '#fff', fontSize: 14 },
-    editBtn: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     body: { flex: 1 },
-    statusRow: {
+    statusBanner: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 16,
-        marginBottom: 8,
+        padding: spacing.lg,
+        marginBottom: spacing.sm,
+        gap: spacing.md,
     },
-    sectionLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    badge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    badgeText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-    section: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginHorizontal: 12,
-        marginBottom: 12,
-    },
-    sectionTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#4F46E5',
-        marginBottom: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 6,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
-    },
-    label: { fontSize: 14, color: '#666' },
-    value: { fontSize: 14, color: '#1a1a1a', fontWeight: '500' },
-    emptyText: { fontSize: 14, color: '#999', textAlign: 'center', paddingVertical: 12 },
-    itemRow: {
-        flexDirection: 'row',
-        paddingVertical: 10,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
-    },
-    itemImage: {
-        width: 56,
-        height: 56,
-        borderRadius: 8,
-        marginRight: 12,
-    },
-    itemImagePlaceholder: {
-        width: 56,
-        height: 56,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+    statusIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: radius.md,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
     },
-    placeholderText: { fontSize: 10, color: '#999' },
+    statusLabel: { fontSize: 12, color: colors.textSecondary },
+    statusValue: { fontSize: 16, fontWeight: '700' },
+    statusDate: { marginLeft: 'auto', alignItems: 'flex-end' },
+    statusDateLabel: { fontSize: 11, color: colors.textSecondary },
+    statusDateValue: { fontSize: 13, fontWeight: '600', color: colors.text },
+    section: {
+        backgroundColor: colors.card,
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.md,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        ...shadow.sm,
+    },
+    responseSection: { borderLeftWidth: 3, borderLeftColor: colors.primary },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.xs,
+    },
+    infoText: { fontSize: 14, color: colors.text, flex: 1 },
+    emptyText: { fontSize: 14, color: colors.textTertiary, textAlign: 'center', padding: spacing.md },
+    itemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.borderLight,
+    },
+    itemImage: { width: 52, height: 52, borderRadius: radius.md, marginRight: spacing.md },
+    itemImagePlaceholder: {
+        width: 52,
+        height: 52,
+        borderRadius: radius.md,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.md,
+    },
     itemInfo: { flex: 1 },
-    itemName: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-    itemDetail: { fontSize: 12, color: '#666', marginTop: 2 },
-    itemTotal: { fontSize: 13, fontWeight: '600', color: '#4F46E5', marginTop: 4 },
+    itemName: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 },
+    itemDetail: { fontSize: 12, color: colors.textSecondary },
+    itemTotal: { fontSize: 14, fontWeight: '700', color: colors.primary },
     totalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 12,
-        paddingTop: 12,
+        marginTop: spacing.md,
+        paddingTop: spacing.md,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: colors.border,
     },
-    totalLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    totalValue: { fontSize: 18, fontWeight: 'bold', color: '#4F46E5' },
-    noteText: { fontSize: 14, color: '#444', lineHeight: 20 },
-    responseText: {
-        fontSize: 14,
-        color: '#444',
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    inlineInput: {
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-        borderRadius: 6,
-        padding: 6,
-        fontSize: 14,
-        color: '#1a1a1a',
-        minWidth: 120,
-        textAlign: 'right',
-    },
-    cancelEditBtn: {
-        margin: 12,
-        padding: 14,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ddd',
+    totalLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+    totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
+    noteText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    responseText: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.md },
+    offeredPriceRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        backgroundColor: '#DCFCE7',
+        borderRadius: radius.md,
+        padding: spacing.md,
+        marginBottom: spacing.md,
     },
-    cancelEditText: { color: '#666', fontSize: 16 },
+    offeredPriceLabel: { fontSize: 13, color: colors.success },
+    offeredPriceValue: { fontSize: 16, fontWeight: '700', color: colors.success },
 });

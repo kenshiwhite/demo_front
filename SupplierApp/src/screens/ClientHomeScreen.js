@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../components/Icon';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { Button, InputField } from '../components/UI';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, TextInput, ActivityIndicator,
@@ -338,17 +341,20 @@ export default function ClientHomeScreen() {
                         : view === 'requests' ? 'Мои заявки'
                         : 'Все товары'}
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => setShowProfile(true)}>
-                        <Ionicons name="person-outline" size={24} color="white" />
+                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
+                        <Icon name="user" size={18} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowCart(true)}>
-                        <Text style={styles.logout}>
-                            <Ionicons name="cart-outline" size={24} color="white"/>{getTotalItems() > 0 ? ` ${getTotalItems()}` : ''}
-                        </Text>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCart(true)}>
+                        <Icon name="cart" size={18} color="#fff" />
+                        {getTotalItems() > 0 && (
+                            <View style={styles.cartBadge}>
+                                <Text style={styles.cartBadgeText}>{getTotalItems()}</Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowNotifications(true)}>
-                        <Ionicons name="notifications-outline" size={24} color="white" />
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowNotifications(true)}>
+                        <Icon name="bell" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -415,9 +421,7 @@ export default function ClientHomeScreen() {
                         style={styles.toggleBtn}
                         onPress={() => setDisplayMode(d => d === 'grid' ? 'list' : 'grid')}
                     >
-                        <Text style={styles.toggleBtnText}>
-                            {displayMode === 'grid' ? '☰' : '⊞'}
-                        </Text>
+                        <Icon name={displayMode === 'grid' ? 'list' : 'grid'} size={18} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
             )}
@@ -887,4 +891,25 @@ const styles = StyleSheet.create({
     buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
     cancelButton: { alignItems: 'center', padding: 12 },
     cancelText: { color: '#666', fontSize: 16 },
+    headerIconBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cartBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: colors.danger,
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 3,
+    },
+    cartBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 });

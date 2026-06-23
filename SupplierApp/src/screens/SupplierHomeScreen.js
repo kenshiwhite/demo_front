@@ -1,19 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, ActivityIndicator, Alert,
     Modal, TextInput, ScrollView, Image,
     KeyboardAvoidingView, Platform,
-    TouchableWithoutFeedback, Keyboard
+    TouchableWithoutFeedback, Keyboard,
+    Animated
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import ProfileScreen from './ProfileScreen';
-import * as ImagePicker from 'expo-image-picker';
 import AnalyticsScreen from './AnalyticsScreen';
+import { InputField, Button, SectionTitle } from '../components/UI';
+import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import Icon from '../components/Icon';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function SupplierHomeScreen() {
     const { signOut, user } = useAuth();
@@ -30,6 +33,7 @@ export default function SupplierHomeScreen() {
     const [productModal, setProductModal] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [showAnalytics, setShowAnalytics] = useState(false);
     const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [productForm, setProductForm] = useState({
@@ -40,12 +44,25 @@ export default function SupplierHomeScreen() {
         stock_quantity: '',
         is_available: true,
     });
-    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         if (view === 'requests') loadRequests();
         else loadProducts();
     }, [view]);
+
+    useEffect(() => {
+        loadUnreadCount();
+    }, []);
+
+    const loadUnreadCount = async () => {
+        try {
+            const res = await client.get('/api/notifications/unread_count/');
+            setUnreadCount(res.data.unread_count);
+        } catch (e) {}
+    };
 
     const filteredRequests = requests.filter(r => {
         if (requestFilter === 'active') return ['pending', 'accepted'].includes(r.status);
@@ -85,7 +102,7 @@ export default function SupplierHomeScreen() {
     const handlePickImage = async () => {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
-            Alert.alert('Нет доступа', 'Пожалуйста, разрешите доступ к фото');
+            Alert.alert('Нет доступа', 'Разрешите доступ к фото в настройках');
             return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -101,7 +118,7 @@ export default function SupplierHomeScreen() {
 
     const handleSubmitResponse = async () => {
         if (!message) {
-            Alert.alert('Ошибка', 'Пожалуйста, введите сообщение');
+            Alert.alert('Ошибка', 'Введите сообщение для клиента');
             return;
         }
         try {
@@ -112,7 +129,7 @@ export default function SupplierHomeScreen() {
             setResponseModal(false);
             setMessage('');
             setOfferedPrice('');
-            Alert.alert('Успешно', 'Ответ отправлен клиенту!');
+            Alert.alert('Отправлено', 'Ответ отправлен клиенту');
             loadRequests();
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось отправить ответ');
@@ -120,33 +137,42 @@ export default function SupplierHomeScreen() {
     };
 
     const handleUpdateStatus = async (requestId, newStatus) => {
-        const statusText = newStatus === 'fulfilled' ? 'выполнено' : 'отклонено';
+        const label = newStatus === 'fulfilled' ? 'выполнена' : 'отклонена';
         try {
             await client.patch(`/api/requests/${requestId}/update_status/`, { status: newStatus });
-            Alert.alert('Успешно', `Заявка отмечена как ${statusText}`);
+            Alert.alert('Обновлено', `Заявка отмечена как ${label}`);
             loadRequests();
         } catch (e) {
-            Alert.alert('Ошибка', 'Не удалось обновить статус');
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось обновить статус');
         }
     };
 
-    const handleEditProduct = (product) => {
-        setProductForm({
-            name: product.name,
-            description: product.description || '',
-            price: product.price.toString(),
-            unit: product.unit,
-            stock_quantity: product.stock_quantity.toString(),
-            is_available: product.is_available,
-        });
-        setEditingProduct(product);
+    const openProductModal = (product = null) => {
+        if (product) {
+            setEditingProduct(product);
+            setProductForm({
+                name: product.name,
+                description: product.description || '',
+                price: product.price.toString(),
+                unit: product.unit,
+                stock_quantity: product.stock_quantity.toString(),
+                is_available: product.is_available,
+            });
+        } else {
+            setEditingProduct(null);
+            setProductForm({
+                name: '', description: '', price: '',
+                unit: '', stock_quantity: '', is_available: true,
+            });
+        }
+        setProductImage(null);
         setProductModal(true);
     };
 
-    const handleDeleteProduct = (productId) => {
+    const handleDeleteProduct = (product) => {
         Alert.alert(
             'Удалить товар',
-            'Вы уверены, что хотите удалить этот товар?',
+            `Удалить "${product.name}"? Это действие нельзя отменить.`,
             [
                 { text: 'Отмена', style: 'cancel' },
                 {
@@ -154,8 +180,7 @@ export default function SupplierHomeScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await client.delete(`/api/catalog/products/${productId}/`);
-                            Alert.alert('Успешно', 'Товар удалён');
+                            await client.delete(`/api/catalog/products/${product.id}/`);
                             loadProducts();
                         } catch (e) {
                             Alert.alert('Ошибка', 'Не удалось удалить товар');
@@ -166,17 +191,26 @@ export default function SupplierHomeScreen() {
         );
     };
 
-    const handleAddProduct = async () => {
-        if (!productForm.name || !productForm.price || !productForm.unit) {
-            Alert.alert('Ошибка', 'Заполните название, цену и единицу измерения');
+    const handleSaveProduct = async () => {
+        if (!productForm.name.trim()) {
+            Alert.alert('Ошибка', 'Введите название товара');
             return;
         }
+        if (!productForm.price || isNaN(parseFloat(productForm.price))) {
+            Alert.alert('Ошибка', 'Введите корректную цену');
+            return;
+        }
+        if (!productForm.unit.trim()) {
+            Alert.alert('Ошибка', 'Введите единицу измерения');
+            return;
+        }
+
         try {
             const formData = new FormData();
-            formData.append('name', productForm.name);
+            formData.append('name', productForm.name.trim());
             formData.append('description', productForm.description);
             formData.append('price', parseFloat(productForm.price));
-            formData.append('unit', productForm.unit);
+            formData.append('unit', productForm.unit.trim());
             formData.append('stock_quantity', parseInt(productForm.stock_quantity) || 0);
             formData.append('is_available', productForm.is_available);
 
@@ -192,19 +226,13 @@ export default function SupplierHomeScreen() {
                 await client.patch(`/api/catalog/products/${editingProduct.id}/`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                Alert.alert('Успешно', 'Товар обновлён!');
             } else {
                 await client.post('/api/catalog/products/', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                Alert.alert('Успешно', 'Товар добавлен!');
             }
 
             setProductModal(false);
-            setProductForm({
-                name: '', description: '', price: '',
-                unit: '', stock_quantity: '', is_available: true,
-            });
             setProductImage(null);
             setEditingProduct(null);
             loadProducts();
@@ -219,181 +247,189 @@ export default function SupplierHomeScreen() {
                 is_available: !product.is_available,
             });
             loadProducts();
-        } catch (e) {
-            Alert.alert('Ошибка', 'Не удалось обновить товар');
-        }
+        } catch (e) {}
     };
 
-    const getStatusColor = (status) => {
-        const colors = {
-            pending: '#F59E0B',
-            accepted: '#10B981',
-            declined: '#EF4444',
-            fulfilled: '#6366F1',
+    const getStatusConfig = (status) => {
+        const configs = {
+            pending: { label: 'Ожидает', color: colors.warning, bg: '#FEF3C7', icon: 'clock' },
+            accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
+            declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
+            fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
         };
-        return colors[status] || '#999';
+        return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight };
     };
 
-    const getStatusText = (status) => {
-        const texts = {
-            pending: 'Ожидает',
-            accepted: 'Принято',
-            declined: 'Отклонено',
-            fulfilled: 'Выполнено',
-        };
-        return texts[status] || status;
+    const renderRequest = ({ item }) => {
+        const statusConfig = getStatusConfig(item.status);
+        return (
+            <TouchableOpacity
+                style={styles.card}
+                onPress={() => setSelectedRequestDetail(item)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.cardTop}>
+                    <View style={styles.requestNumberRow}>
+                        <Text style={styles.requestNumber}>Заявка #{item.id}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+                            <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                                {statusConfig.label}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={styles.requestMeta}>
+                        <View style={styles.metaItem}>
+                            <Icon name="user" size={13} color={colors.textTertiary} />
+                            <Text style={styles.metaText}>{item.client_name}</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                            <Icon name="package" size={13} color={colors.textTertiary} />
+                            <Text style={styles.metaText}>{item.items?.length || 0} товар(ов)</Text>
+                        </View>
+                    </View>
+                    {item.total_price && (
+                        <Text style={styles.requestTotal}>
+                            {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
+                        </Text>
+                    )}
+                    {item.delivery_address ? (
+                        <View style={styles.metaItem}>
+                            <Icon name="map_pin" size={13} color={colors.textTertiary} />
+                            <Text style={styles.metaText} numberOfLines={1}>{item.delivery_address}</Text>
+                        </View>
+                    ) : null}
+                    {item.desired_delivery_date ? (
+                        <View style={styles.metaItem}>
+                            <Icon name="calendar" size={13} color={colors.textTertiary} />
+                            <Text style={styles.metaText}>
+                                {new Date(item.desired_delivery_date).toLocaleDateString('ru-RU')}
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
+
+                {item.response && (
+                    <View style={styles.responsePreview}>
+                        <Icon name="check" size={12} color={colors.success} />
+                        <Text style={styles.responsePreviewText} numberOfLines={1}>
+                            {item.response.message}
+                        </Text>
+                    </View>
+                )}
+
+                {item.status === 'pending' && (
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.success }]}
+                            onPress={(e) => { e.stopPropagation(); handleRespond(item); }}
+                        >
+                            <Icon name="mail" size={14} color="#fff" />
+                            <Text style={styles.actionBtnText}>Ответить</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.danger }]}
+                            onPress={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'declined'); }}
+                        >
+                            <Icon name="x" size={14} color="#fff" />
+                            <Text style={styles.actionBtnText}>Отклонить</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {item.status === 'accepted' && (
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { flex: 1, backgroundColor: colors.purple }]}
+                            onPress={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'fulfilled'); }}
+                        >
+                            <Icon name="truck" size={14} color="#fff" />
+                            <Text style={styles.actionBtnText}>Отметить как выполнено</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                <View style={styles.tapHintRow}>
+                    <Text style={styles.tapHint}>Подробнее</Text>
+                    <Icon name="chevronRight" size={14} color={colors.primary} />
+                </View>
+            </TouchableOpacity>
+        );
     };
-
-    const renderRequest = ({ item }) => (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => setSelectedRequestDetail(item)}
-        >
-            <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Заявка #{item.id}</Text>
-                <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.badgeText}>{getStatusText(item.status)}</Text>
-                </View>
-            </View>
-            <Text style={styles.cardSubtitle}>От: {item.client_name}</Text>
-            <Text style={styles.cardSubtitle}>Товаров: {item.items?.length || 0}</Text>
-            {item.total_price && (
-                <Text style={styles.cardSubtitle}>
-                    Итого: {parseInt(item.total_price).toLocaleString('ru-RU')} ₸
-                </Text>
-            )}
-            {item.delivery_address ? (
-                <Text style={styles.cardSubtitle} numberOfLines={1}>
-                    Адрес: {item.delivery_address}
-                </Text>
-            ) : null}
-            {item.desired_delivery_date ? (
-                <Text style={styles.cardSubtitle}>
-                    Дата: {new Date(item.desired_delivery_date).toLocaleDateString('ru-RU')}
-                </Text>
-            ) : null}
-            {item.note ? (
-                <Text style={styles.note}>Заметка: {item.note}</Text>
-            ) : null}
-
-            {item.response && (
-                <View style={styles.responseBox}>
-                    <Text style={styles.responseTitle}>Ваш ответ:</Text>
-                    <Text style={styles.responseText} numberOfLines={2}>
-                        {item.response.message}
-                    </Text>
-                </View>
-            )}
-
-            {item.status === 'pending' && (
-                <View style={styles.actions}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: '#10B981' }]}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            handleRespond(item);
-                        }}
-                    >
-                        <Text style={styles.actionText}>Ответить</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(item.id, 'declined');
-                        }}
-                    >
-                        <Text style={styles.actionText}>Отклонить</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {item.status === 'accepted' && (
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#6366F1', marginTop: 8 }]}
-                    onPress={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(item.id, 'fulfilled');
-                    }}
-                >
-                    <Text style={styles.actionText}>Отметить как выполнено</Text>
-                </TouchableOpacity>
-            )}
-            <Text style={styles.tapHint}>Нажмите для подробностей →</Text>
-        </TouchableOpacity>
-    );
 
     const renderProduct = ({ item }) => {
-        const isLowStock = item.stock_quantity <= 10;
+        const isLowStock = item.stock_quantity > 0 && item.stock_quantity <= 10;
         const isOutOfStock = item.stock_quantity === 0;
 
         return (
-            <View style={styles.card}>
-                {item.image ? (
-                    <Image
-                        source={{ uri: item.image }}
-                        style={styles.productImage}
-                        resizeMode="cover"
-                    />
-                ) : (
-                    <View style={styles.productImagePlaceholder}>
-                        <Text style={styles.placeholderText}>Нет фото</Text>
-                    </View>
-                )}
-                <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>{item.name}</Text>
+            <View style={styles.productCard}>
+                <View style={styles.productImageContainer}>
+                    {item.image ? (
+                        <Image
+                            source={{ uri: item.image }}
+                            style={styles.productImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View style={styles.productImagePlaceholder}>
+                            <Icon name="image" size={28} color={colors.textTertiary} />
+                        </View>
+                    )}
                     <TouchableOpacity
                         style={[
-                            styles.badge,
-                            { backgroundColor: item.is_available ? '#10B981' : '#EF4444' }
+                            styles.availabilityToggle,
+                            { backgroundColor: item.is_available ? colors.success : colors.danger }
                         ]}
                         onPress={() => handleToggleAvailability(item)}
                     >
-                        <Text style={styles.badgeText}>
+                        <Text style={styles.availabilityText}>
                             {item.is_available ? 'В наличии' : 'Нет в наличии'}
                         </Text>
                     </TouchableOpacity>
                 </View>
-                <Text style={styles.cardSubtitle}>{item.description}</Text>
-                <Text style={styles.price}>
-                    {parseInt(item.price).toLocaleString('ru-RU')} ₸ / {item.unit}
-                </Text>
-                <View style={styles.stockRow}>
-                    <Text style={styles.stockLabel}>Остаток:</Text>
-                    <Text style={[
-                        styles.stockValue,
-                        isOutOfStock && styles.stockOut,
-                        isLowStock && !isOutOfStock && styles.stockLow,
-                        !isLowStock && styles.stockOk,
-                    ]}>
-                        {item.stock_quantity} {item.unit}
+
+                <View style={styles.productBody}>
+                    <Text style={styles.productName}>{item.name}</Text>
+                    {item.description ? (
+                        <Text style={styles.productDescription} numberOfLines={2}>
+                            {item.description}
+                        </Text>
+                    ) : null}
+                    <Text style={styles.productPrice}>
+                        {parseInt(item.price).toLocaleString('ru-RU')} ₸
+                        <Text style={styles.productUnit}> / {item.unit}</Text>
                     </Text>
-                </View>
-                {isOutOfStock && (
-                    <View style={styles.stockWarning}>
-                        <Text style={styles.stockWarningText}>⚠️ Товар закончился</Text>
-                    </View>
-                )}
-                {isLowStock && !isOutOfStock && (
-                    <View style={[styles.stockWarning, { backgroundColor: '#FFF8E7' }]}>
-                        <Text style={[styles.stockWarningText, { color: '#F59E0B' }]}>
-                            ⚠️ Мало товара
+
+                    <View style={styles.stockRow}>
+                        <Icon
+                            name={isOutOfStock ? 'warning' : 'package'}
+                            size={14}
+                            color={isOutOfStock ? colors.danger : isLowStock ? colors.warning : colors.success}
+                        />
+                        <Text style={[
+                            styles.stockText,
+                            isOutOfStock && { color: colors.danger },
+                            isLowStock && { color: colors.warning },
+                            !isOutOfStock && !isLowStock && { color: colors.success },
+                        ]}>
+                            {isOutOfStock ? 'Нет на складе' : `${item.stock_quantity} ${item.unit}`}
                         </Text>
                     </View>
-                )}
-                <View style={styles.actions}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: '#4F46E5' }]}
-                        onPress={() => handleEditProduct(item)}
-                    >
-                        <Text style={styles.actionText}>Изменить</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
-                        onPress={() => handleDeleteProduct(item.id)}
-                    >
-                        <Text style={styles.actionText}>Удалить</Text>
-                    </TouchableOpacity>
+
+                    <View style={styles.productActions}>
+                        <TouchableOpacity
+                            style={styles.editBtn}
+                            onPress={() => openProductModal(item)}
+                        >
+                            <Icon name="edit" size={15} color={colors.primary} />
+                            <Text style={styles.editBtnText}>Изменить</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.deleteBtn}
+                            onPress={() => handleDeleteProduct(item)}
+                        >
+                            <Icon name="trash" size={15} color={colors.danger} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         );
@@ -401,28 +437,57 @@ export default function SupplierHomeScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>
-                    {user?.company_name || user?.username}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => setShowProfile(true)}>
-                        <Ionicons name="person-outline" size={24} color="white" />
+                <View>
+                    <Text style={styles.headerGreeting}>Добро пожаловать</Text>
+                    <Text style={styles.headerName} numberOfLines={1}>
+                        {user?.company_name || user?.username}
+                    </Text>
+                </View>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        style={styles.headerIconBtn}
+                        onPress={() => setShowAnalytics(true)}
+                    >
+                        <Icon name="bar_chart" size={20} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowAnalytics(true)}>
-                        <Ionicons name="bar-chart-outline" size={24} color="white" />
+                    <TouchableOpacity
+                        style={styles.headerIconBtn}
+                        onPress={() => {
+                            setShowNotifications(true);
+                            loadUnreadCount();
+                        }}
+                    >
+                        <Icon name="bell" size={20} color="#fff" />
+                        {unreadCount > 0 && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowNotifications(true)}>
-                        <Ionicons name="notifications-outline" size={24} color="white" />
+                    <TouchableOpacity
+                        style={styles.headerIconBtn}
+                        onPress={() => setShowProfile(true)}
+                    >
+                        <Icon name="user" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
 
+            {/* Tabs */}
             <View style={styles.tabs}>
                 <TouchableOpacity
                     style={[styles.tab, view === 'requests' && styles.tabActive]}
                     onPress={() => setView('requests')}
                 >
+                    <Icon
+                        name="package"
+                        size={16}
+                        color={view === 'requests' ? colors.primary : colors.textTertiary}
+                    />
                     <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>
                         Заявки
                     </Text>
@@ -431,77 +496,84 @@ export default function SupplierHomeScreen() {
                     style={[styles.tab, view === 'products' && styles.tabActive]}
                     onPress={() => setView('products')}
                 >
+                    <Icon
+                        name="layers"
+                        size={16}
+                        color={view === 'products' ? colors.primary : colors.textTertiary}
+                    />
                     <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>
                         Мои товары
                     </Text>
                 </TouchableOpacity>
             </View>
 
+            {/* Request filter */}
             {view === 'requests' && (
                 <View style={styles.filterBar}>
-                    <TouchableOpacity
-                        style={[styles.filterBtn, requestFilter === 'active' && styles.filterBtnActive]}
-                        onPress={() => setRequestFilter('active')}
-                    >
-                        <Text style={[styles.filterBtnText, requestFilter === 'active' && styles.filterBtnTextActive]}>
-                            Активные
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.filterBtn, requestFilter === 'all' && styles.filterBtnActive]}
-                        onPress={() => setRequestFilter('all')}
-                    >
-                        <Text style={[styles.filterBtnText, requestFilter === 'all' && styles.filterBtnTextActive]}>
-                            Все
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.filterBtn, requestFilter === 'history' && styles.filterBtnActive]}
-                        onPress={() => setRequestFilter('history')}
-                    >
-                        <Text style={[styles.filterBtnText, requestFilter === 'history' && styles.filterBtnTextActive]}>
-                            История
-                        </Text>
-                    </TouchableOpacity>
+                    {[
+                        { key: 'active', label: 'Активные' },
+                        { key: 'all', label: 'Все' },
+                        { key: 'history', label: 'История' },
+                    ].map(f => (
+                        <TouchableOpacity
+                            key={f.key}
+                            style={[styles.filterBtn, requestFilter === f.key && styles.filterBtnActive]}
+                            onPress={() => setRequestFilter(f.key)}
+                        >
+                            <Text style={[styles.filterBtnText, requestFilter === f.key && styles.filterBtnTextActive]}>
+                                {f.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             )}
 
             {loading ? (
-                <ActivityIndicator style={styles.loader} size="large" color="#4F46E5" />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
             ) : (
                 <FlatList
                     data={view === 'requests' ? filteredRequests : products}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={view === 'requests' ? renderRequest : renderProduct}
                     contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <Text style={styles.empty}>
-                            {view === 'requests'
-                                ? requestFilter === 'history'
-                                    ? 'История заявок пуста'
-                                    : requestFilter === 'active'
-                                    ? 'Нет активных заявок'
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconBox}>
+                                <Icon
+                                    name={view === 'requests' ? 'package' : 'layers'}
+                                    size={32}
+                                    color={colors.textTertiary}
+                                />
+                            </View>
+                            <Text style={styles.emptyTitle}>
+                                {view === 'requests'
+                                    ? requestFilter === 'history' ? 'История пуста'
+                                    : requestFilter === 'active' ? 'Нет активных заявок'
                                     : 'Заявок пока нет'
-                                : 'Товаров пока нет'}
-                        </Text>
+                                    : 'Товаров пока нет'}
+                            </Text>
+                            <Text style={styles.emptySubtitle}>
+                                {view === 'requests'
+                                    ? 'Заявки от клиентов появятся здесь'
+                                    : 'Добавьте первый товар кнопкой ниже'}
+                            </Text>
+                        </View>
                     }
                 />
             )}
 
+            {/* FAB */}
             {view === 'products' && (
                 <TouchableOpacity
                     style={styles.fab}
-                    onPress={() => {
-                        setEditingProduct(null);
-                        setProductForm({
-                            name: '', description: '', price: '',
-                            unit: '', stock_quantity: '', is_available: true,
-                        });
-                        setProductImage(null);
-                        setProductModal(true);
-                    }}
+                    onPress={() => openProductModal()}
+                    activeOpacity={0.8}
                 >
-                    <Text style={styles.fabText}>+ Добавить товар</Text>
+                    <Icon name="plus" size={22} color="#fff" />
+                    <Text style={styles.fabText}>Добавить товар</Text>
                 </TouchableOpacity>
             )}
 
@@ -513,48 +585,54 @@ export default function SupplierHomeScreen() {
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
                             <View style={styles.modalContent}>
+                                <View style={styles.modalHandle} />
                                 <Text style={styles.modalTitle}>Ответить на заявку</Text>
-                                <Text style={styles.modalSubtitle}>
-                                    Заявка #{selectedRequest?.id} — {selectedRequest?.items?.length || 0} товаров
-                                </Text>
-                                {selectedRequest?.total_price && (
-                                    <View style={styles.totalRow}>
-                                        <Text style={styles.totalLabel}>Сумма заявки:</Text>
-                                        <Text style={styles.totalValue}>
-                                            {parseInt(selectedRequest.total_price).toLocaleString('ru-RU')} ₸
+                                <View style={styles.modalInfoBox}>
+                                    <View style={styles.modalInfoRow}>
+                                        <Icon name="package" size={14} color={colors.textTertiary} />
+                                        <Text style={styles.modalInfoText}>
+                                            Заявка #{selectedRequest?.id} · {selectedRequest?.items?.length || 0} товар(ов)
                                         </Text>
                                     </View>
-                                )}
-                                <TextInput
-                                    style={[styles.input, styles.textArea]}
-                                    placeholder="Ваше сообщение клиенту"
+                                    {selectedRequest?.total_price && (
+                                        <View style={styles.modalInfoRow}>
+                                            <Icon name="trending_up" size={14} color={colors.textTertiary} />
+                                            <Text style={styles.modalInfoText}>
+                                                Сумма: {parseInt(selectedRequest.total_price).toLocaleString('ru-RU')} ₸
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <InputField
+                                    label="Сообщение клиенту *"
                                     value={message}
                                     onChangeText={setMessage}
+                                    placeholder="Напишите ответ на заявку..."
                                     multiline
                                     numberOfLines={3}
+                                    autoCapitalize="sentences"
+                                    autoCorrect
                                 />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Предложить цену (необязательно)"
+                                <InputField
+                                    label="Предложить другую цену (необязательно)"
                                     value={offeredPrice}
                                     onChangeText={setOfferedPrice}
+                                    placeholder="0 ₸"
                                     keyboardType="numeric"
                                 />
-                                <TouchableOpacity
-                                    style={styles.button}
-                                    onPress={handleSubmitResponse}
-                                >
-                                    <Text style={styles.buttonText}>Отправить ответ</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
+                                <Button label="Отправить ответ" onPress={handleSubmitResponse} />
+                                <Button
+                                    label="Отмена"
                                     onPress={() => {
                                         Keyboard.dismiss();
                                         setResponseModal(false);
+                                        setMessage('');
+                                        setOfferedPrice('');
                                     }}
-                                >
-                                    <Text style={styles.cancelText}>Отмена</Text>
-                                </TouchableOpacity>
+                                    variant="ghost"
+                                    style={{ marginTop: spacing.sm }}
+                                />
                             </View>
                         </KeyboardAvoidingView>
                     </View>
@@ -564,84 +642,149 @@ export default function SupplierHomeScreen() {
             {/* Add/Edit Product Modal */}
             <Modal visible={productModal} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
-                    <ScrollView>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>
-                                {editingProduct ? 'Редактировать товар' : 'Добавить товар'}
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.imagePicker}
-                                onPress={handlePickImage}
-                            >
-                                {productImage ? (
-                                    <Image
-                                        source={{ uri: productImage.uri }}
-                                        style={styles.imagePreview}
-                                        resizeMode="cover"
-                                    />
-                                ) : editingProduct?.image ? (
-                                    <Image
-                                        source={{ uri: editingProduct.image }}
-                                        style={styles.imagePreview}
-                                        resizeMode="cover"
-                                    />
-                                ) : (
-                                    <Text style={styles.imagePickerText}>📷 Добавить фото</Text>
-                                )}
-                            </TouchableOpacity>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Название товара *"
-                                value={productForm.name}
-                                onChangeText={(v) => setProductForm(p => ({ ...p, name: v }))}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.textArea]}
-                                placeholder="Описание"
-                                value={productForm.description}
-                                onChangeText={(v) => setProductForm(p => ({ ...p, description: v }))}
-                                multiline
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Цена (₸) *"
-                                value={productForm.price}
-                                onChangeText={(v) => setProductForm(p => ({ ...p, price: v }))}
-                                keyboardType="numeric"
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Единица (кг, шт, упак) *"
-                                value={productForm.unit}
-                                onChangeText={(v) => setProductForm(p => ({ ...p, unit: v }))}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Количество на складе"
-                                value={productForm.stock_quantity}
-                                onChangeText={(v) => setProductForm(p => ({ ...p, stock_quantity: v }))}
-                                keyboardType="numeric"
-                            />
-                            <TouchableOpacity
-                                style={styles.button}
-                                onPress={handleAddProduct}
-                            >
-                                <Text style={styles.buttonText}>
-                                    {editingProduct ? 'Сохранить изменения' : 'Добавить товар'}
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => {
-                                    setProductModal(false);
-                                    setProductImage(null);
-                                    setEditingProduct(null);
-                                }}
-                            >
-                                <Text style={styles.cancelText}>Отмена</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
+                    <KeyboardAvoidingView
+                        style={{ flex: 1, justifyContent: 'flex-end' }}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    >
+                        <ScrollView
+                            bounces={false}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.productModalContent}>
+                                <View style={styles.modalHandle} />
+
+                                <View style={styles.productModalHeader}>
+                                    <Text style={styles.modalTitle}>
+                                        {editingProduct ? 'Редактировать товар' : 'Новый товар'}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setProductModal(false);
+                                            setProductImage(null);
+                                            setEditingProduct(null);
+                                        }}
+                                    >
+                                        <Icon name="x" size={22} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Image picker */}
+                                <TouchableOpacity
+                                    style={styles.imagePicker}
+                                    onPress={handlePickImage}
+                                    activeOpacity={0.7}
+                                >
+                                    {productImage ? (
+                                        <Image
+                                            source={{ uri: productImage.uri }}
+                                            style={styles.imagePreview}
+                                            resizeMode="cover"
+                                        />
+                                    ) : editingProduct?.image ? (
+                                        <Image
+                                            source={{ uri: editingProduct.image }}
+                                            style={styles.imagePreview}
+                                            resizeMode="cover"
+                                        />
+                                    ) : (
+                                        <View style={styles.imagePickerEmpty}>
+                                            <Icon name="image" size={28} color={colors.textTertiary} />
+                                            <Text style={styles.imagePickerText}>Добавить фото</Text>
+                                            <Text style={styles.imagePickerSub}>Нажмите чтобы выбрать</Text>
+                                        </View>
+                                    )}
+                                    {(productImage || editingProduct?.image) && (
+                                        <View style={styles.imageChangeOverlay}>
+                                            <Icon name="edit" size={16} color="#fff" />
+                                            <Text style={styles.imageChangeText}>Изменить</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+
+                                <SectionTitle label="Основная информация" />
+
+                                <InputField
+                                    label="Название товара *"
+                                    value={productForm.name}
+                                    onChangeText={(v) => setProductForm(p => ({ ...p, name: v }))}
+                                    placeholder="Например: Сахар-песок ГОСТ"
+                                    autoCapitalize="sentences"
+                                    autoCorrect
+                                />
+                                <InputField
+                                    label="Описание"
+                                    value={productForm.description}
+                                    onChangeText={(v) => setProductForm(p => ({ ...p, description: v }))}
+                                    placeholder="Состав, характеристики, особенности..."
+                                    multiline
+                                    numberOfLines={3}
+                                    autoCapitalize="sentences"
+                                    autoCorrect
+                                />
+
+                                <SectionTitle label="Цена и наличие" />
+
+                                <View style={styles.rowInputs}>
+                                    <View style={{ flex: 1.5 }}>
+                                        <InputField
+                                            label="Цена (₸) *"
+                                            value={productForm.price}
+                                            onChangeText={(v) => setProductForm(p => ({ ...p, price: v }))}
+                                            placeholder="0"
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1, marginLeft: spacing.md }}>
+                                        <InputField
+                                            label="Единица *"
+                                            value={productForm.unit}
+                                            onChangeText={(v) => setProductForm(p => ({ ...p, unit: v }))}
+                                            placeholder="кг / шт"
+                                            autoCapitalize="none"
+                                        />
+                                    </View>
+                                </View>
+
+                                <InputField
+                                    label="Количество на складе"
+                                    value={productForm.stock_quantity}
+                                    onChangeText={(v) => setProductForm(p => ({ ...p, stock_quantity: v }))}
+                                    placeholder="0"
+                                    keyboardType="numeric"
+                                />
+
+                                <View style={styles.availabilityRow}>
+                                    <View>
+                                        <Text style={styles.availabilityLabel}>Доступен для заказа</Text>
+                                        <Text style={styles.availabilityDesc}>
+                                            {productForm.is_available ? 'Клиенты могут заказать' : 'Скрыт от клиентов'}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.toggle,
+                                            productForm.is_available && styles.toggleActive
+                                        ]}
+                                        onPress={() => setProductForm(p => ({ ...p, is_available: !p.is_available }))}
+                                    >
+                                        <View style={[
+                                            styles.toggleThumb,
+                                            productForm.is_available && styles.toggleThumbActive
+                                        ]} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Button
+                                    label={editingProduct ? 'Сохранить изменения' : 'Добавить товар'}
+                                    onPress={handleSaveProduct}
+                                    style={{ marginTop: spacing.md }}
+                                />
+
+                                <View style={{ height: spacing.xxxl }} />
+                            </View>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
                 </View>
             </Modal>
 
@@ -650,17 +793,14 @@ export default function SupplierHomeScreen() {
                     <RequestDetailScreen
                         request={selectedRequestDetail}
                         onClose={() => setSelectedRequestDetail(null)}
-                        onUpdate={() => {
-                            loadRequests();
-                            setSelectedRequestDetail(null);
-                        }}
+                        onUpdate={() => { loadRequests(); setSelectedRequestDetail(null); }}
                     />
                 </View>
             )}
 
             {showNotifications && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <NotificationsScreen onClose={() => setShowNotifications(false)} />
+                    <NotificationsScreen onClose={() => { setShowNotifications(false); loadUnreadCount(); }} />
                 </View>
             )}
 
@@ -680,207 +820,345 @@ export default function SupplierHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        justifyContent: 'space-between',
+        paddingTop: STATUS_TOP,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: colors.primary,
     },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-    logout: { color: '#fff', fontSize: 14 },
+    headerGreeting: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+    headerName: { fontSize: 18, fontWeight: '700', color: '#fff', maxWidth: 180 },
+    headerActions: { flexDirection: 'row', gap: spacing.sm },
+    headerIconBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    badge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: colors.danger,
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 3,
+    },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
     tabs: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.border,
     },
-    tab: { flex: 1, padding: 16, alignItems: 'center' },
+    tab: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.md,
+    },
     tabActive: {
         borderBottomWidth: 2,
-        borderBottomColor: '#4F46E5',
+        borderBottomColor: colors.primary,
     },
-    tabText: { fontSize: 15, color: '#999' },
-    tabTextActive: { color: '#4F46E5', fontWeight: '600' },
+    tabText: { fontSize: 14, color: colors.textTertiary, fontWeight: '500' },
+    tabTextActive: { color: colors.primary, fontWeight: '700' },
     filterBar: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
-        padding: 8,
-        gap: 8,
+        backgroundColor: colors.card,
+        padding: spacing.sm,
+        gap: spacing.sm,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.border,
     },
     filterBtn: {
         flex: 1,
-        padding: 8,
-        borderRadius: 8,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.md,
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.background,
     },
-    filterBtnActive: { backgroundColor: '#4F46E5' },
-    filterBtnText: { fontSize: 13, color: '#666', fontWeight: '600' },
-    filterBtnTextActive: { color: '#fff' },
-    list: { padding: 12 },
-    loader: { marginTop: 40 },
-    empty: { textAlign: 'center', color: '#999', marginTop: 40 },
+    filterBtnActive: { backgroundColor: colors.primaryLight },
+    filterBtnText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+    filterBtnTextActive: { color: colors.primary, fontWeight: '700' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    list: { padding: spacing.lg, paddingBottom: 100 },
+    emptyState: { alignItems: 'center', paddingVertical: 60 },
+    emptyIconBox: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.xl,
+    },
+    emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm },
+    emptySubtitle: { fontSize: 14, color: colors.textTertiary, textAlign: 'center' },
+
+    // Request card
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        ...shadow.sm,
     },
-    cardHeader: {
+    cardTop: { marginBottom: spacing.sm },
+    requestNumberRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: spacing.sm,
     },
-    cardTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a', flex: 1 },
-    cardSubtitle: { fontSize: 13, color: '#666', marginTop: 2 },
-    badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
+    requestNumber: { fontSize: 15, fontWeight: '700', color: colors.text },
+    statusBadge: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
     },
-    badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-    note: { fontSize: 13, color: '#888', marginTop: 6, fontStyle: 'italic' },
-    price: { fontSize: 15, fontWeight: '600', color: '#4F46E5', marginTop: 6 },
-    responseBox: {
-        backgroundColor: '#f0f4ff',
-        borderRadius: 8,
-        padding: 10,
-        marginTop: 10,
+    statusBadgeText: { fontSize: 12, fontWeight: '600' },
+    requestMeta: { flexDirection: 'row', gap: spacing.lg, marginBottom: spacing.xs },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1 },
+    metaText: { fontSize: 13, color: colors.textSecondary, flex: 1 },
+    requestTotal: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: colors.text,
+        marginVertical: spacing.sm,
     },
-    responseTitle: { fontSize: 13, fontWeight: '600', color: '#4F46E5' },
-    responseText: { fontSize: 13, color: '#444', marginTop: 2 },
-    actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-    actionButton: {
+    responsePreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: '#DCFCE7',
+        borderRadius: radius.md,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+    },
+    responsePreviewText: { fontSize: 12, color: colors.success, flex: 1 },
+    cardActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+    actionBtn: {
         flex: 1,
-        padding: 10,
-        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+    },
+    actionBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+    tapHintRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        marginTop: spacing.sm,
+        gap: 2,
+    },
+    tapHint: { fontSize: 12, color: colors.primary },
+
+    // Product card
+    productCard: {
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        marginBottom: spacing.md,
+        overflow: 'hidden',
+        ...shadow.sm,
+    },
+    productImageContainer: { position: 'relative' },
+    productImage: { width: '100%', height: 180 },
+    productImagePlaceholder: {
+        width: '100%',
+        height: 160,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center',
         alignItems: 'center',
     },
-    actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-    tapHint: {
-        fontSize: 12,
-        color: '#4F46E5',
-        marginTop: 10,
-        textAlign: 'right',
+    availabilityToggle: {
+        position: 'absolute',
+        top: spacing.md,
+        right: spacing.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
     },
+    availabilityText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    productBody: { padding: spacing.lg },
+    productName: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
+    productDescription: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.sm, lineHeight: 18 },
+    productPrice: { fontSize: 20, fontWeight: '800', color: colors.primary, marginBottom: spacing.sm },
+    productUnit: { fontSize: 14, fontWeight: '400', color: colors.textSecondary },
+    stockRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginBottom: spacing.md,
+    },
+    stockText: { fontSize: 13, fontWeight: '600' },
+    productActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderLight,
+    },
+    editBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.md,
+        backgroundColor: colors.primaryLight,
+        borderRadius: radius.lg,
+    },
+    editBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+    deleteBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: radius.lg,
+        backgroundColor: '#FEE2E2',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // FAB
     fab: {
         position: 'absolute',
-        bottom: 24,
-        right: 24,
-        backgroundColor: '#4F46E5',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        borderRadius: 30,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 5,
+        bottom: spacing.xxl,
+        right: spacing.lg,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl,
+        paddingVertical: spacing.md,
+        borderRadius: radius.full,
+        gap: spacing.sm,
+        ...shadow.lg,
     },
-    fabText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+    fabText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+    // Modals
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
+        paddingTop: spacing.lg,
     },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-    modalSubtitle: { fontSize: 14, color: '#666', marginBottom: 16 },
-    totalRow: {
+    productModalContent: {
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
+        paddingTop: spacing.lg,
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: colors.border,
+        alignSelf: 'center',
+        marginBottom: spacing.xl,
+    },
+    productModalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        backgroundColor: '#f0f4ff',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    totalLabel: { fontSize: 14, color: '#666' },
-    totalValue: { fontSize: 15, fontWeight: '600', color: '#4F46E5' },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 12,
-        fontSize: 16,
-    },
-    textArea: { height: 80, textAlignVertical: 'top' },
-    button: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 8,
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: spacing.xl,
     },
-    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    cancelButton: { alignItems: 'center', padding: 12 },
-    cancelText: { color: '#666', fontSize: 16 },
-    productImage: {
-        width: '100%',
-        height: 160,
-        borderRadius: 8,
-        marginBottom: 12,
+    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+    modalInfoBox: {
+        backgroundColor: colors.background,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.xl,
+        gap: spacing.sm,
     },
-    productImagePlaceholder: {
-        width: '100%',
-        height: 160,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    placeholderText: { color: '#999', fontSize: 14 },
+    modalInfoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    modalInfoText: { fontSize: 14, color: colors.textSecondary },
+
+    // Image picker
     imagePicker: {
         width: '100%',
-        height: 160,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#ddd',
+        height: 180,
+        borderRadius: radius.lg,
+        overflow: 'hidden',
+        marginBottom: spacing.xl,
+        backgroundColor: colors.background,
+        borderWidth: 2,
+        borderColor: colors.border,
         borderStyle: 'dashed',
     },
-    imagePreview: {
-        width: '100%',
-        height: 160,
-        borderRadius: 8,
+    imagePreview: { width: '100%', height: '100%' },
+    imagePickerEmpty: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: spacing.sm,
     },
-    imagePickerText: { color: '#999', fontSize: 16 },
-    stockRow: {
+    imagePickerText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
+    imagePickerSub: { fontSize: 12, color: colors.textTertiary },
+    imageChangeOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
         flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: spacing.sm,
+        gap: spacing.xs,
+    },
+    imageChangeText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+
+    // Row inputs
+    rowInputs: { flexDirection: 'row' },
+
+    // Availability toggle
+    availabilityRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-        marginBottom: 4,
+        backgroundColor: colors.background,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
     },
-    stockLabel: { fontSize: 13, color: '#666' },
-    stockValue: { fontSize: 15, fontWeight: '700' },
-    stockOk: { color: '#10B981' },
-    stockLow: { color: '#F59E0B' },
-    stockOut: { color: '#EF4444' },
-    stockWarning: {
-        backgroundColor: '#FEF2F2',
-        borderRadius: 8,
-        padding: 8,
-        marginTop: 6,
-        alignItems: 'center',
+    availabilityLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+    availabilityDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    toggle: {
+        width: 50,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.border,
+        justifyContent: 'center',
+        paddingHorizontal: 3,
     },
-    stockWarningText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
+    toggleActive: { backgroundColor: colors.primary },
+    toggleThumb: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#fff',
+        ...shadow.sm,
+    },
+    toggleThumbActive: { transform: [{ translateX: 22 }] },
 });
