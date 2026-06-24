@@ -17,6 +17,7 @@ import { InputField, Button, SectionTitle } from '../components/UI';
 import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 import Icon from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
+import CalendarScreen from './CalendarScreen';
 
 export default function SupplierHomeScreen() {
     const { signOut, user } = useAuth();
@@ -36,6 +37,7 @@ export default function SupplierHomeScreen() {
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [showCalendar, setShowCalendar] = useState(false);
     const [productForm, setProductForm] = useState({
         name: '',
         description: '',
@@ -448,6 +450,12 @@ export default function SupplierHomeScreen() {
                 <View style={styles.headerActions}>
                     <TouchableOpacity
                         style={styles.headerIconBtn}
+                        onPress={() => setShowCalendar(true)}
+                    >
+                        <Icon name="calendar" size={20} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.headerIconBtn}
                         onPress={() => setShowAnalytics(true)}
                     >
                         <Icon name="bar_chart" size={20} color="#fff" />
@@ -787,6 +795,15 @@ export default function SupplierHomeScreen() {
                     </KeyboardAvoidingView>
                 </View>
             </Modal>
+
+            {showCalendar && (
+                    <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                        <CalendarScreen
+                            onClose={() => setShowCalendar(false)}
+                            userRole="supplier"
+                        />
+                    </View>
+                )}
 
             {selectedRequestDetail && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
