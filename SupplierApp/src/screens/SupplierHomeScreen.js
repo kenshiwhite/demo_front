@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
+import SupplierHomeTab from './SupplierHomeTab';
 import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import ProfileScreen from './ProfileScreen';
@@ -21,7 +22,7 @@ import CalendarScreen from './CalendarScreen';
 
 export default function SupplierHomeScreen() {
     const { signOut, user } = useAuth();
-    const [view, setView] = useState('requests');
+    const [view, setView] = useState('home');
     const [requests, setRequests] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -448,12 +449,12 @@ export default function SupplierHomeScreen() {
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         style={styles.headerIconBtn}
                         onPress={() => setShowCalendar(true)}
                     >
                         <Icon name="calendar" size={20} color="#fff" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                     <TouchableOpacity
                         style={styles.headerIconBtn}
                         onPress={() => setShowAnalytics(true)}
@@ -488,30 +489,25 @@ export default function SupplierHomeScreen() {
             {/* Tabs */}
             <View style={styles.tabs}>
                 <TouchableOpacity
+                    style={[styles.tab, view === 'home' && styles.tabActive]}
+                    onPress={() => setView('home')}
+                >
+                    <Icon name="store" size={16} color={view === 'home' ? colors.primary : colors.textTertiary} />
+                    <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>Главная</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                     style={[styles.tab, view === 'requests' && styles.tabActive]}
                     onPress={() => setView('requests')}
                 >
-                    <Icon
-                        name="package"
-                        size={16}
-                        color={view === 'requests' ? colors.primary : colors.textTertiary}
-                    />
-                    <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>
-                        Заявки
-                    </Text>
+                    <Icon name="package" size={16} color={view === 'requests' ? colors.primary : colors.textTertiary} />
+                    <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>Заявки</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, view === 'products' && styles.tabActive]}
                     onPress={() => setView('products')}
                 >
-                    <Icon
-                        name="layers"
-                        size={16}
-                        color={view === 'products' ? colors.primary : colors.textTertiary}
-                    />
-                    <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>
-                        Мои товары
-                    </Text>
+                    <Icon name="layers" size={16} color={view === 'products' ? colors.primary : colors.textTertiary} />
+                    <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>Товары</Text>
                 </TouchableOpacity>
             </View>
 
@@ -536,7 +532,9 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
-            {loading ? (
+            {view === 'home' ? (
+                <SupplierHomeTab />
+            ) : loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
                 </View>

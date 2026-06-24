@@ -405,9 +405,6 @@ export default function ClientHomeScreen() {
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
-                        <Icon name="user" size={18} color="#fff" />
-                    </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCart(true)}>
                         <Icon name="cart" size={18} color="#fff" />
                         {getTotalItems() > 0 && (
@@ -418,6 +415,9 @@ export default function ClientHomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowNotifications(true)}>
                         <Icon name="bell" size={18} color="#fff" />
+                    </TouchableOpacity>
+                                        <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
+                        <Icon name="user" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
