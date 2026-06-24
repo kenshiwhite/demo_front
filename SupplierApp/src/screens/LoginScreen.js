@@ -50,9 +50,9 @@ export default function LoginScreen({ navigation }) {
             >
                 <View style={styles.logoSection}>
                     <View style={styles.logo}>
-                        <Text style={styles.logoText}>ON</Text>
+                        <Text style={styles.logoText}>IN</Text>
                     </View>
-                    <Text style={styles.appName}>OnStock</Text>
+                    <Text style={styles.appName}>InStock</Text>
                     <Text style={styles.tagline}>Платформа для поставщиков и клиентов</Text>
                 </View>
 
