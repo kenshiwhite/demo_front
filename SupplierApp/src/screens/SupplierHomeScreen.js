@@ -20,6 +20,7 @@ import Icon from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import CalendarScreen from './CalendarScreen';
 
+
 export default function SupplierHomeScreen() {
     const { signOut, user } = useAuth();
     const [view, setView] = useState('home');
@@ -39,6 +40,7 @@ export default function SupplierHomeScreen() {
     const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [showCalendar, setShowCalendar] = useState(false);
+    const [calendarSelectedRequest, setCalendarSelectedRequest] = useState(null);
     const [productForm, setProductForm] = useState({
         name: '',
         description: '',
@@ -46,10 +48,30 @@ export default function SupplierHomeScreen() {
         unit: '',
         stock_quantity: '',
         is_available: true,
+        category: '',
     });
+    const [categories, setCategories] = useState([]);
+    const [categoryModal, setCategoryModal] = useState(false);  
     const [unreadCount, setUnreadCount] = useState(0);
 
+    
+
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        loadUnreadCount();
+        loadCategories();
+    }, []);
+
+    const loadCategories = async () => {
+        try {
+            const response = await client.get('/api/catalog/categories/');
+            const data = response.data.results || response.data;
+            setCategories(Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.log('Could not load categories', e?.response?.data || e.message);
+        }
+    };
 
     useEffect(() => {
         if (view === 'requests') loadRequests();
@@ -160,12 +182,13 @@ export default function SupplierHomeScreen() {
                 unit: product.unit,
                 stock_quantity: product.stock_quantity.toString(),
                 is_available: product.is_available,
+                category: product.category || '',
             });
         } else {
             setEditingProduct(null);
             setProductForm({
                 name: '', description: '', price: '',
-                unit: '', stock_quantity: '', is_available: true,
+                unit: '', stock_quantity: '', is_available: true, category: '',
             });
         }
         setProductImage(null);
@@ -216,6 +239,7 @@ export default function SupplierHomeScreen() {
             formData.append('unit', productForm.unit.trim());
             formData.append('stock_quantity', parseInt(productForm.stock_quantity) || 0);
             formData.append('is_available', productForm.is_available);
+            formData.append('category', productForm.category || 'other');
 
             if (productImage) {
                 formData.append('image', {
@@ -533,7 +557,9 @@ export default function SupplierHomeScreen() {
             )}
 
             {view === 'home' ? (
-                <SupplierHomeTab />
+                <SupplierHomeTab
+                    onRequestPress={(request) => setCalendarSelectedRequest(request)}
+                />
             ) : loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
@@ -631,10 +657,10 @@ export default function SupplierHomeScreen() {
                                 <Button
                                     label="Отмена"
                                     onPress={() => {
-                                        Keyboard.dismiss();
-                                        setResponseModal(false);
-                                        setMessage('');
-                                        setOfferedPrice('');
+                                        setProductModal(false);
+                                        setCategoryModal(false);
+                                        setProductImage(null);
+                                        setEditingProduct(null);
                                     }}
                                     variant="ghost"
                                     style={{ marginTop: spacing.sm }}
@@ -667,6 +693,7 @@ export default function SupplierHomeScreen() {
                                     <TouchableOpacity
                                         onPress={() => {
                                             setProductModal(false);
+                                            setCategoryModal(false); // also close category picker
                                             setProductImage(null);
                                             setEditingProduct(null);
                                         }}
@@ -728,6 +755,29 @@ export default function SupplierHomeScreen() {
                                     autoCapitalize="sentences"
                                     autoCorrect
                                 />
+
+                                <SectionTitle label="Категория" />
+
+                                <TouchableOpacity
+                                    style={styles.categoryPicker}
+                                    onPress={() => {
+                                        console.log('Category pressed');
+                                        setCategoryModal(true);
+                                    }}
+                                >
+                                    <View style={styles.categoryPickerLeft}>
+                                        <Icon name="filter" size={16} color={colors.primary} />
+                                        <Text style={[
+                                            styles.categoryPickerText,
+                                            !productForm.category && { color: colors.placeholder }
+                                        ]}>
+                                            {productForm.category
+                                                ? categories.find(c => c.value === productForm.category)?.label || 'Выберите категорию'
+                                                : 'Выберите категорию'}
+                                        </Text>
+                                    </View>
+                                    <Icon name="chevronRight" size={16} color={colors.textTertiary} />
+                                </TouchableOpacity>
 
                                 <SectionTitle label="Цена и наличие" />
 
@@ -791,8 +841,73 @@ export default function SupplierHomeScreen() {
                             </View>
                         </ScrollView>
                     </KeyboardAvoidingView>
+
+                    {categoryModal && (
+                        <View style={StyleSheet.absoluteFill}>
+                            <TouchableOpacity
+                                style={StyleSheet.absoluteFill}
+                                activeOpacity={1}
+                                onPress={() => setCategoryModal(false)}
+                            />
+                            <View style={[styles.categoryModalContent, { position: 'absolute', left: 0, right: 0, bottom: 0 }]}>
+                                <View style={styles.modalHandle} />
+                                <View style={styles.categoryModalHeader}>
+                                    <Text style={styles.modalTitle}>Категория товара</Text>
+                                    <TouchableOpacity onPress={() => setCategoryModal(false)}>
+                                        <Icon name="x" size={22} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    {categories.length === 0 && (
+                                        <Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.lg }}>
+                                            Категории не найдены
+                                        </Text>
+                                    )}
+                                    {categories.map(cat => (
+                                        <TouchableOpacity
+                                            key={cat.value}
+                                            style={[
+                                                styles.categoryOption,
+                                                productForm.category === cat.value && styles.categoryOptionActive
+                                            ]}
+                                            onPress={() => {
+                                                setProductForm(p => ({ ...p, category: cat.value }));
+                                                setCategoryModal(false);
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[
+                                                styles.categoryOptionText,
+                                                productForm.category === cat.value && styles.categoryOptionTextActive
+                                            ]}>
+                                                {cat.label}
+                                            </Text>
+                                            {productForm.category === cat.value && (
+                                                <Icon name="check" size={16} color={colors.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                    <View style={{ height: 32 }} />
+                                </ScrollView>
+                            </View>
+                        </View>
+                    )}
                 </View>
             </Modal>
+
+
+            {calendarSelectedRequest && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <RequestDetailScreen
+                        request={calendarSelectedRequest}
+                        onClose={() => setCalendarSelectedRequest(null)}
+                        onUpdate={() => {
+                            setCalendarSelectedRequest(null);
+                            loadRequests();
+                        }}
+                    />
+                </View>
+            )}
 
             {showCalendar && (
                     <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
@@ -830,6 +945,7 @@ export default function SupplierHomeScreen() {
                     <AnalyticsScreen onClose={() => setShowAnalytics(false)} />
                 </View>
             )}
+
         </View>
     );
 }
@@ -1176,4 +1292,66 @@ const styles = StyleSheet.create({
         ...shadow.sm,
     },
     toggleThumbActive: { transform: [{ translateX: 22 }] },
+    categoryPicker: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.background,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        marginBottom: spacing.md,
+        minHeight: 50,
+    },
+    categoryPickerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        flex: 1,
+    },
+    categoryPickerText: {
+        fontSize: 15,
+        color: colors.text,
+        flex: 1,
+    },
+    categoryModalContent: {
+        backgroundColor: colors.card,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.xxl,
+        paddingTop: spacing.lg,
+        maxHeight: '80%',
+    },
+    categoryModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.xl,
+    },
+    categoryOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+        borderRadius: radius.lg,
+        marginBottom: spacing.xs,
+        backgroundColor: colors.background,
+    },
+    categoryOptionActive: {
+        backgroundColor: colors.primaryLight,
+        borderWidth: 1,
+        borderColor: colors.primary + '40',
+    },
+    categoryOptionText: {
+        fontSize: 15,
+        color: colors.text,
+        fontWeight: '500',
+    },
+    categoryOptionTextActive: {
+        color: colors.primary,
+        fontWeight: '700',
+    },
 });

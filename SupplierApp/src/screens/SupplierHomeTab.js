@@ -18,14 +18,14 @@ LocaleConfig.locales['ru'] = {
 };
 LocaleConfig.defaultLocale = 'ru';
 
-export default function SupplierHomeTab() {
+export default function SupplierHomeTab({ onRequestPress }) {
+
     const [products, setProducts] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(null);
     const [markedDates, setMarkedDates] = useState({});
     const [requestsByDate, setRequestsByDate] = useState({});
-    const [selectedRequest, setSelectedRequest] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -40,8 +40,6 @@ export default function SupplierHomeTab() {
             ]);
             const prods = productsRes.data.results || productsRes.data;
             const reqs = requestsRes.data.results || requestsRes.data;
-
-            // sort products by stock ascending
             const sorted = [...prods].sort((a, b) => a.stock_quantity - b.stock_quantity);
             setProducts(sorted);
             setRequests(reqs);
@@ -72,29 +70,21 @@ export default function SupplierHomeTab() {
         const marked = {};
 
         data.forEach(request => {
-            const date = request.created_at?.split('T')[0];
+            const createdDate = request.created_at?.split('T')[0];
             const deliveryDate = request.desired_delivery_date;
+            const displayDate = deliveryDate || createdDate;
 
-            if (date) {
-                if (!byDate[date]) byDate[date] = [];
-                byDate[date].push({ ...request, calendarDateType: 'created' });
-            }
-            if (deliveryDate && deliveryDate !== date) {
-                if (!byDate[deliveryDate]) byDate[deliveryDate] = [];
-                if (!byDate[deliveryDate].find(r => r.id === request.id)) {
-                    byDate[deliveryDate].push({ ...request, calendarDateType: 'delivery' });
-                }
+            if (displayDate) {
+                if (!byDate[displayDate]) byDate[displayDate] = [];
+                byDate[displayDate].push({
+                    ...request,
+                    calendarDateType: deliveryDate ? 'delivery' : 'created'
+                });
             }
         });
 
         Object.keys(byDate).forEach(date => {
             const statuses = [...new Set(byDate[date].map(r => r.status))];
-            let dotColor = colors.textTertiary;
-            if (statuses.includes('pending')) dotColor = colors.warning;
-            else if (statuses.includes('accepted')) dotColor = colors.success;
-            else if (statuses.includes('fulfilled')) dotColor = colors.purple;
-            else if (statuses.includes('declined')) dotColor = colors.danger;
-
             marked[date] = {
                 dots: statuses.slice(0, 3).map(s => ({ key: s, color: getStatusColor(s) })),
                 marked: true,
@@ -140,16 +130,6 @@ export default function SupplierHomeTab() {
         });
     };
 
-    if (selectedRequest) {
-        return (
-            <RequestDetailScreen
-                request={selectedRequest}
-                onClose={() => setSelectedRequest(null)}
-                onUpdate={() => { setSelectedRequest(null); loadData(); }}
-            />
-        );
-    }
-
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -160,30 +140,29 @@ export default function SupplierHomeTab() {
     }
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Stock alerts */}
-            {lowStockProducts.length > 0 && (
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={styles.sectionIconBox}>
-                            <Icon name="warning" size={16} color={colors.warning} />
+        <View style={{ flex: 1 }}>
+            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                {/* Stock alerts */}
+                {lowStockProducts.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <View style={[styles.sectionIconBox, { backgroundColor: '#FEF3C7' }]}>
+                                <Icon name="warning" size={16} color={colors.warning} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.sectionTitle}>Остатки на складе</Text>
+                                <Text style={styles.sectionSub}>
+                                    {outOfStockCount > 0
+                                        ? `${outOfStockCount} товар(ов) закончилось`
+                                        : `${lowStockProducts.length} товар(ов) заканчивается`}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={loadData}>
+                                <Icon name="refresh" size={16} color={colors.textTertiary} />
+                            </TouchableOpacity>
                         </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.sectionTitle}>Остатки на складе</Text>
-                            <Text style={styles.sectionSub}>
-                                {outOfStockCount > 0
-                                    ? `${outOfStockCount} товар(ов) закончилось`
-                                    : `${lowStockProducts.length} товар(ов) заканчивается`}
-                            </Text>
-                        </View>
-                        <TouchableOpacity onPress={loadData}>
-                            <Icon name="refresh" size={16} color={colors.textTertiary} />
-                        </TouchableOpacity>
-                    </View>
 
-                    {products
-                        .filter(p => p.stock_quantity <= 10)
-                        .map((product, index) => {
+                        {lowStockProducts.map((product) => {
                             const stockStatus = getStockStatus(product.stock_quantity);
                             const maxQty = 50;
                             const fillPercent = Math.min((product.stock_quantity / maxQty) * 100, 100);
@@ -191,11 +170,7 @@ export default function SupplierHomeTab() {
                             return (
                                 <View key={product.id} style={styles.stockItem}>
                                     {product.image ? (
-                                        <Image
-                                            source={{ uri: product.image }}
-                                            style={styles.stockImage}
-                                            resizeMode="cover"
-                                        />
+                                        <Image source={{ uri: product.image }} style={styles.stockImage} resizeMode="cover" />
                                     ) : (
                                         <View style={[styles.stockImage, styles.stockImagePlaceholder]}>
                                             <Icon name="image" size={14} color={colors.textTertiary} />
@@ -203,9 +178,7 @@ export default function SupplierHomeTab() {
                                     )}
                                     <View style={styles.stockInfo}>
                                         <View style={styles.stockTopRow}>
-                                            <Text style={styles.stockName} numberOfLines={1}>
-                                                {product.name}
-                                            </Text>
+                                            <Text style={styles.stockName} numberOfLines={1}>{product.name}</Text>
                                             <View style={[styles.stockBadge, { backgroundColor: stockStatus.bg }]}>
                                                 <Text style={[styles.stockBadgeText, { color: stockStatus.color }]}>
                                                     {product.stock_quantity} {product.unit}
@@ -213,204 +186,197 @@ export default function SupplierHomeTab() {
                                             </View>
                                         </View>
                                         <View style={styles.progressBar}>
-                                            <View style={[
-                                                styles.progressFill,
-                                                {
-                                                    width: `${fillPercent}%`,
-                                                    backgroundColor: stockStatus.color,
-                                                }
-                                            ]} />
+                                            <View style={[styles.progressFill, { width: `${fillPercent}%`, backgroundColor: stockStatus.color }]} />
                                         </View>
-                                        <Text style={[styles.stockStatusText, { color: stockStatus.color }]}>
-                                            {stockStatus.label}
-                                        </Text>
+                                        <Text style={[styles.stockStatusText, { color: stockStatus.color }]}>{stockStatus.label}</Text>
                                     </View>
                                 </View>
                             );
                         })}
-                </View>
-            )}
-
-            {/* All products sorted by stock */}
-            <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
-                        <Icon name="layers" size={16} color={colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.sectionTitle}>Все товары по остаткам</Text>
-                        <Text style={styles.sectionSub}>{products.length} товаров, по возрастанию</Text>
-                    </View>
-                </View>
-
-                {products.slice(0, 8).map((product) => {
-                    const stockStatus = getStockStatus(product.stock_quantity);
-                    return (
-                        <View key={product.id} style={styles.productRow}>
-                            {product.image ? (
-                                <Image
-                                    source={{ uri: product.image }}
-                                    style={styles.productRowImage}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <View style={[styles.productRowImage, styles.productRowImagePlaceholder]}>
-                                    <Icon name="image" size={14} color={colors.textTertiary} />
-                                </View>
-                            )}
-                            <View style={styles.productRowInfo}>
-                                <Text style={styles.productRowName} numberOfLines={1}>
-                                    {product.name}
-                                </Text>
-                                <Text style={styles.productRowPrice}>
-                                    {parseInt(product.price).toLocaleString('ru-RU')} ₸ / {product.unit}
-                                </Text>
-                            </View>
-                            <View style={[styles.stockQtyBadge, { backgroundColor: stockStatus.bg }]}>
-                                <Icon name={stockStatus.icon} size={11} color={stockStatus.color} />
-                                <Text style={[styles.stockQtyText, { color: stockStatus.color }]}>
-                                    {product.stock_quantity}
-                                </Text>
-                            </View>
-                        </View>
-                    );
-                })}
-
-                {products.length > 8 && (
-                    <View style={styles.moreRow}>
-                        <Text style={styles.moreText}>
-                            Ещё {products.length - 8} товаров — перейдите в «Мои товары»
-                        </Text>
                     </View>
                 )}
-            </View>
 
-            {/* Calendar */}
-            <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <View style={[styles.sectionIconBox, { backgroundColor: '#EDE9FE' }]}>
-                        <Icon name="calendar" size={16} color={colors.purple} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.sectionTitle}>Календарь заявок</Text>
-                        <Text style={styles.sectionSub}>{requests.length} заявок всего</Text>
-                    </View>
-                </View>
-
-                <View style={styles.calendarWrapper}>
-                    <Calendar
-                        onDayPress={handleDayPress}
-                        markedDates={markedDates}
-                        markingType="multi-dot"
-                        theme={{
-                            backgroundColor: colors.card,
-                            calendarBackground: colors.card,
-                            textSectionTitleColor: colors.textTertiary,
-                            selectedDayBackgroundColor: colors.primary,
-                            selectedDayTextColor: '#fff',
-                            todayTextColor: colors.primary,
-                            dayTextColor: colors.text,
-                            textDisabledColor: colors.textTertiary,
-                            arrowColor: colors.primary,
-                            monthTextColor: colors.text,
-                            textDayFontWeight: '500',
-                            textMonthFontWeight: '700',
-                            textDayHeaderFontWeight: '600',
-                            textDayFontSize: 14,
-                            textMonthFontSize: 15,
-                            textDayHeaderFontSize: 12,
-                        }}
-                    />
-                </View>
-
-                {/* Legend */}
-                <View style={styles.legend}>
-                    {[
-                        { color: colors.warning, label: 'Ожидает' },
-                        { color: colors.success, label: 'Принято' },
-                        { color: colors.purple, label: 'Выполнено' },
-                        { color: colors.danger, label: 'Отклонено' },
-                    ].map(item => (
-                        <View key={item.label} style={styles.legendItem}>
-                            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                            <Text style={styles.legendText}>{item.label}</Text>
+                {/* All products sorted by stock */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
+                            <Icon name="layers" size={16} color={colors.primary} />
                         </View>
-                    ))}
-                </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.sectionTitle}>Все товары по остаткам</Text>
+                            <Text style={styles.sectionSub}>{products.length} товаров, по возрастанию</Text>
+                        </View>
+                    </View>
 
-                {/* Selected date */}
-                {selectedDate && (
-                    <View style={styles.selectedDateSection}>
-                        <View style={styles.selectedDateHeader}>
-                            <Icon name="calendar" size={14} color={colors.primary} />
-                            <Text style={styles.selectedDateTitle}>{formatDate(selectedDate)}</Text>
-                            <Text style={styles.selectedDateCount}>
-                                {selectedDateRequests.length} заявок
+                    {products.slice(0, 8).map((product) => {
+                        const stockStatus = getStockStatus(product.stock_quantity);
+                        return (
+                            <View key={product.id} style={styles.productRow}>
+                                {product.image ? (
+                                    <Image source={{ uri: product.image }} style={styles.productRowImage} resizeMode="cover" />
+                                ) : (
+                                    <View style={[styles.productRowImage, styles.productRowImagePlaceholder]}>
+                                        <Icon name="image" size={14} color={colors.textTertiary} />
+                                    </View>
+                                )}
+                                <View style={styles.productRowInfo}>
+                                    <Text style={styles.productRowName} numberOfLines={1}>{product.name}</Text>
+                                    <Text style={styles.productRowPrice}>
+                                        {parseInt(product.price).toLocaleString('ru-RU')} ₸ / {product.unit}
+                                    </Text>
+                                </View>
+                                <View style={[styles.stockQtyBadge, { backgroundColor: stockStatus.bg }]}>
+                                    <Icon name={stockStatus.icon} size={11} color={stockStatus.color} />
+                                    <Text style={[styles.stockQtyText, { color: stockStatus.color }]}>
+                                        {product.stock_quantity}
+                                    </Text>
+                                </View>
+                            </View>
+                        );
+                    })}
+
+                    {products.length > 8 && (
+                        <View style={styles.moreRow}>
+                            <Text style={styles.moreText}>
+                                Ещё {products.length - 8} товаров — перейдите в «Мои товары»
                             </Text>
                         </View>
+                    )}
+                </View>
 
-                        {selectedDateRequests.length === 0 ? (
-                            <View style={styles.emptyDay}>
-                                <Icon name="info" size={16} color={colors.textTertiary} />
-                                <Text style={styles.emptyDayText}>Нет заявок на эту дату</Text>
+                {/* Calendar */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={[styles.sectionIconBox, { backgroundColor: '#EDE9FE' }]}>
+                            <Icon name="calendar" size={16} color={colors.purple} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.sectionTitle}>Календарь заявок</Text>
+                            <Text style={styles.sectionSub}>Даты доставки · {requests.length} заявок</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.calendarWrapper}>
+                        <Calendar
+                            onDayPress={handleDayPress}
+                            markedDates={markedDates}
+                            markingType="multi-dot"
+                            theme={{
+                                backgroundColor: colors.card,
+                                calendarBackground: colors.card,
+                                textSectionTitleColor: colors.textTertiary,
+                                selectedDayBackgroundColor: colors.primary,
+                                selectedDayTextColor: '#fff',
+                                todayTextColor: colors.primary,
+                                dayTextColor: colors.text,
+                                textDisabledColor: colors.textTertiary,
+                                arrowColor: colors.primary,
+                                monthTextColor: colors.text,
+                                textDayFontWeight: '500',
+                                textMonthFontWeight: '700',
+                                textDayHeaderFontWeight: '600',
+                                textDayFontSize: 14,
+                                textMonthFontSize: 15,
+                                textDayHeaderFontSize: 12,
+                            }}
+                        />
+                    </View>
+
+                    <View style={styles.legend}>
+                        {[
+                            { color: colors.warning, label: 'Ожидает' },
+                            { color: colors.success, label: 'Принято' },
+                            { color: colors.purple, label: 'Выполнено' },
+                            { color: colors.danger, label: 'Отклонено' },
+                        ].map(item => (
+                            <View key={item.label} style={styles.legendItem}>
+                                <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                                <Text style={styles.legendText}>{item.label}</Text>
                             </View>
-                        ) : (
-                            selectedDateRequests.map(request => {
-                                const sc = getStatusConfig(request.status);
-                                return (
-                                    <TouchableOpacity
-                                        key={`${request.id}-${request.calendarDateType}`}
-                                        style={styles.calendarRequestCard}
-                                        onPress={() => setSelectedRequest(request)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={styles.calendarRequestTop}>
-                                            <View>
-                                                <Text style={styles.calendarRequestId}>
-                                                    Заявка #{request.id}
-                                                </Text>
-                                                <View style={styles.calendarRequestMeta}>
-                                                    <Icon name="user" size={12} color={colors.textTertiary} />
-                                                    <Text style={styles.calendarRequestMetaText}>
-                                                        {request.client_name}
-                                                    </Text>
+                        ))}
+                    </View>
+
+                    {selectedDate && (
+                        <View style={styles.selectedDateSection}>
+                            <View style={styles.selectedDateHeader}>
+                                <Icon name="calendar" size={14} color={colors.primary} />
+                                <Text style={styles.selectedDateTitle}>{formatDate(selectedDate)}</Text>
+                                <Text style={styles.selectedDateCount}>{selectedDateRequests.length} заявок</Text>
+                            </View>
+
+                            {selectedDateRequests.length === 0 ? (
+                                <View style={styles.emptyDay}>
+                                    <Icon name="info" size={16} color={colors.textTertiary} />
+                                    <Text style={styles.emptyDayText}>Нет заявок на эту дату</Text>
+                                </View>
+                            ) : (
+                                selectedDateRequests.map(request => {
+                                    const sc = getStatusConfig(request.status);
+                                    return (
+                                        <TouchableOpacity
+                                            key={`${request.id}-${request.calendarDateType}`}
+                                            style={styles.calendarRequestCard}
+                                            onPress={() => onRequestPress(request)}
+                                            activeOpacity={0.7}
+                                        >
+                                            {request.calendarDateType === 'delivery' && (
+                                                <View style={styles.deliveryBadge}>
+                                                    <Icon name="truck" size={11} color={colors.primary} />
+                                                    <Text style={styles.deliveryBadgeText}>Дата доставки</Text>
+                                                </View>
+                                            )}
+                                            <View style={styles.calendarRequestTop}>
+                                                <View>
+                                                    <Text style={styles.calendarRequestId}>Заявка #{request.id}</Text>
+                                                    <View style={styles.calendarRequestMeta}>
+                                                        <Icon name="user" size={12} color={colors.textTertiary} />
+                                                        <Text style={styles.calendarRequestMetaText}>{request.client_name}</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                                                    <Icon name={sc.icon} size={11} color={sc.color} />
+                                                    <Text style={[styles.statusBadgeText, { color: sc.color }]}>{sc.label}</Text>
                                                 </View>
                                             </View>
-                                            <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
-                                                <Icon name={sc.icon} size={11} color={sc.color} />
-                                                <Text style={[styles.statusBadgeText, { color: sc.color }]}>
-                                                    {sc.label}
+                                            {request.total_price && (
+                                                <Text style={styles.calendarRequestTotal}>
+                                                    {parseInt(request.total_price).toLocaleString('ru-RU')} ₸
                                                 </Text>
+                                            )}
+                                            <View style={styles.calendarRequestFooter}>
+                                                <Text style={styles.tapHint}>Открыть</Text>
+                                                <Icon name="chevronRight" size={13} color={colors.primary} />
                                             </View>
-                                        </View>
-                                        {request.total_price && (
-                                            <Text style={styles.calendarRequestTotal}>
-                                                {parseInt(request.total_price).toLocaleString('ru-RU')} ₸
-                                            </Text>
-                                        )}
-                                        <View style={styles.calendarRequestFooter}>
-                                            <Text style={styles.tapHint}>Открыть</Text>
-                                            <Icon name="chevronRight" size={13} color={colors.primary} />
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })
-                        )}
-                    </View>
-                )}
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
+                        </View>
+                    )}
 
-                {!selectedDate && (
-                    <View style={styles.calendarHint}>
-                        <Icon name="info" size={14} color={colors.textTertiary} />
-                        <Text style={styles.calendarHintText}>
-                            Нажмите на дату с точками, чтобы увидеть заявки
-                        </Text>
-                    </View>
-                )}
-            </View>
+                    {!selectedDate && (
+                        <View style={styles.calendarHint}>
+                            <Icon name="info" size={14} color={colors.textTertiary} />
+                            <Text style={styles.calendarHintText}>
+                                Нажмите на дату с точками, чтобы увидеть заявки
+                            </Text>
+                        </View>
+                    )}
+                </View>
 
-            <View style={{ height: 100 }} />
-        </ScrollView>
+                <View style={{ height: 100 }} />
+            </ScrollView>
+
+            {/* {selectedRequest && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <RequestDetailScreen
+                        request={selectedRequest}
+                        onClose={() => setSelectedRequest(null)}
+                        onUpdate={() => { setSelectedRequest(null); loadData(); }}
+                    />
+                </View>
+            )} */}
+        </View>
     );
 }
 
@@ -418,7 +384,6 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
     loadingText: { fontSize: 14, color: colors.textSecondary },
-
     section: {
         backgroundColor: colors.card,
         marginHorizontal: spacing.lg,
@@ -437,14 +402,11 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: radius.md,
-        backgroundColor: '#FEF3C7',
         justifyContent: 'center',
         alignItems: 'center',
     },
     sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
     sectionSub: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-
-    // Stock items
     stockItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -453,12 +415,7 @@ const styles = StyleSheet.create({
         borderBottomColor: colors.borderLight,
         gap: spacing.md,
     },
-    stockImage: {
-        width: 44,
-        height: 44,
-        borderRadius: radius.md,
-        flexShrink: 0,
-    },
+    stockImage: { width: 44, height: 44, borderRadius: radius.md, flexShrink: 0 },
     stockImagePlaceholder: {
         backgroundColor: colors.borderLight,
         justifyContent: 'center',
@@ -488,8 +445,6 @@ const styles = StyleSheet.create({
     },
     progressFill: { height: '100%', borderRadius: 2 },
     stockStatusText: { fontSize: 11, fontWeight: '600' },
-
-    // Product rows
     productRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -498,12 +453,7 @@ const styles = StyleSheet.create({
         borderBottomColor: colors.borderLight,
         gap: spacing.md,
     },
-    productRowImage: {
-        width: 40,
-        height: 40,
-        borderRadius: radius.md,
-        flexShrink: 0,
-    },
+    productRowImage: { width: 40, height: 40, borderRadius: radius.md, flexShrink: 0 },
     productRowImagePlaceholder: {
         backgroundColor: colors.borderLight,
         justifyContent: 'center',
@@ -522,13 +472,8 @@ const styles = StyleSheet.create({
         flexShrink: 0,
     },
     stockQtyText: { fontSize: 12, fontWeight: '700' },
-    moreRow: {
-        paddingTop: spacing.md,
-        alignItems: 'center',
-    },
+    moreRow: { paddingTop: spacing.md, alignItems: 'center' },
     moreText: { fontSize: 12, color: colors.textTertiary, textAlign: 'center' },
-
-    // Calendar
     calendarWrapper: {
         borderRadius: radius.lg,
         overflow: 'hidden',
@@ -562,8 +507,18 @@ const styles = StyleSheet.create({
         borderRadius: radius.lg,
     },
     emptyDayText: { fontSize: 13, color: colors.textSecondary },
-
-    // Calendar request cards
+    deliveryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: colors.primaryLight,
+        alignSelf: 'flex-start',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 3,
+        borderRadius: radius.full,
+        marginBottom: spacing.sm,
+    },
+    deliveryBadgeText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
     calendarRequestCard: {
         backgroundColor: colors.background,
         borderRadius: radius.lg,
