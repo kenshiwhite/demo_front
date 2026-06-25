@@ -66,9 +66,10 @@ export default function SupplierHomeScreen() {
     const loadCategories = async () => {
         try {
             const response = await client.get('/api/catalog/categories/');
-            setCategories(response.data);
+            const data = response.data.results || response.data;
+            setCategories(Array.isArray(data) ? data : []);
         } catch (e) {
-            console.log('Could not load categories');
+            console.log('Could not load categories', e?.response?.data || e.message);
         }
     };
 
@@ -692,7 +693,7 @@ export default function SupplierHomeScreen() {
                                     <TouchableOpacity
                                         onPress={() => {
                                             setProductModal(false);
-                                            setCategoryModal(false); // also close category modal
+                                            setCategoryModal(false); // also close category picker
                                             setProductImage(null);
                                             setEditingProduct(null);
                                         }}
@@ -759,7 +760,10 @@ export default function SupplierHomeScreen() {
 
                                 <TouchableOpacity
                                     style={styles.categoryPicker}
-                                    onPress={() => setCategoryModal(true)}
+                                    onPress={() => {
+                                        console.log('Category pressed');
+                                        setCategoryModal(true);
+                                    }}
                                 >
                                     <View style={styles.categoryPickerLeft}>
                                         <Icon name="filter" size={16} color={colors.primary} />
@@ -837,49 +841,60 @@ export default function SupplierHomeScreen() {
                             </View>
                         </ScrollView>
                     </KeyboardAvoidingView>
+
+                    {categoryModal && (
+                        <View style={StyleSheet.absoluteFill}>
+                            <TouchableOpacity
+                                style={StyleSheet.absoluteFill}
+                                activeOpacity={1}
+                                onPress={() => setCategoryModal(false)}
+                            />
+                            <View style={[styles.categoryModalContent, { position: 'absolute', left: 0, right: 0, bottom: 0 }]}>
+                                <View style={styles.modalHandle} />
+                                <View style={styles.categoryModalHeader}>
+                                    <Text style={styles.modalTitle}>Категория товара</Text>
+                                    <TouchableOpacity onPress={() => setCategoryModal(false)}>
+                                        <Icon name="x" size={22} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    {categories.length === 0 && (
+                                        <Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.lg }}>
+                                            Категории не найдены
+                                        </Text>
+                                    )}
+                                    {categories.map(cat => (
+                                        <TouchableOpacity
+                                            key={cat.value}
+                                            style={[
+                                                styles.categoryOption,
+                                                productForm.category === cat.value && styles.categoryOptionActive
+                                            ]}
+                                            onPress={() => {
+                                                setProductForm(p => ({ ...p, category: cat.value }));
+                                                setCategoryModal(false);
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[
+                                                styles.categoryOptionText,
+                                                productForm.category === cat.value && styles.categoryOptionTextActive
+                                            ]}>
+                                                {cat.label}
+                                            </Text>
+                                            {productForm.category === cat.value && (
+                                                <Icon name="check" size={16} color={colors.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                    <View style={{ height: 32 }} />
+                                </ScrollView>
+                            </View>
+                        </View>
+                    )}
                 </View>
             </Modal>
 
-            <Modal visible={categoryModal} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.categoryModalContent}>
-                        <View style={styles.modalHandle} />
-                        <View style={styles.categoryModalHeader}>
-                            <Text style={styles.modalTitle}>Категория товара</Text>
-                            <TouchableOpacity onPress={() => setCategoryModal(false)}>
-                                <Icon name="x" size={22} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {categories.map(cat => (
-                                <TouchableOpacity
-                                    key={cat.value}
-                                    style={[
-                                        styles.categoryOption,
-                                        productForm.category === cat.value && styles.categoryOptionActive
-                                    ]}
-                                    onPress={() => {
-                                        setProductForm(p => ({ ...p, category: cat.value }));
-                                        setCategoryModal(false);
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[
-                                        styles.categoryOptionText,
-                                        productForm.category === cat.value && styles.categoryOptionTextActive
-                                    ]}>
-                                        {cat.label}
-                                    </Text>
-                                    {productForm.category === cat.value && (
-                                        <Icon name="check" size={16} color={colors.primary} />
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                            <View style={{ height: 32 }} />
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
 
             {calendarSelectedRequest && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
@@ -931,47 +946,6 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
-            {/* Category picker modal */}
-            <Modal visible={categoryModal} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.categoryModalContent}>
-                        <View style={styles.modalHandle} />
-                        <View style={styles.categoryModalHeader}>
-                            <Text style={styles.modalTitle}>Категория товара</Text>
-                            <TouchableOpacity onPress={() => setCategoryModal(false)}>
-                                <Icon name="x" size={22} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {categories.map(cat => (
-                                <TouchableOpacity
-                                    key={cat.value}
-                                    style={[
-                                        styles.categoryOption,
-                                        productForm.category === cat.value && styles.categoryOptionActive
-                                    ]}
-                                    onPress={() => {
-                                        setProductForm(p => ({ ...p, category: cat.value }));
-                                        setCategoryModal(false);
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[
-                                        styles.categoryOptionText,
-                                        productForm.category === cat.value && styles.categoryOptionTextActive
-                                    ]}>
-                                        {cat.label}
-                                    </Text>
-                                    {productForm.category === cat.value && (
-                                        <Icon name="check" size={16} color={colors.primary} />
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                            <View style={{ height: 32 }} />
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
