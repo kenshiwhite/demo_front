@@ -123,9 +123,9 @@ export default function SupplierHomeTab() {
     };
 
     const getStockStatus = (qty) => {
-        if (qty === 0) return { label: 'Нет', color: colors.danger, bg: '#FEE2E2', icon: 'warning' };
+        if (qty === 0) return { label: 'Нет товара', color: colors.danger, bg: '#FEE2E2', icon: 'warning' };
         if (qty <= 5) return { label: 'Критично', color: colors.danger, bg: '#FEE2E2', icon: 'warning' };
-        if (qty <= 10) return { label: 'Мало', color: colors.warning, bg: '#FEF3C7', icon: 'warning' };
+        if (qty <= 20) return { label: 'Мало товара', color: colors.warning, bg: '#FEF3C7', icon: 'warning' };
         return { label: 'В норме', color: colors.success, bg: '#DCFCE7', icon: 'check' };
     };
 
