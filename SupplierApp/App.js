@@ -18,7 +18,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import SupplierHomeScreen from './src/screens/SupplierHomeScreen';
 import ClientHomeScreen from './src/screens/ClientHomeScreen';
-import VerifyEmailScreen from './src/screens/VerifyEmailScreen';
+import VerifyPhoneScreen from './src/screens/VerifyPhoneScreen';
 import CitySelectScreen from './src/screens/CitySelectScreen';
 
 const Stack = createNativeStackNavigator();
@@ -63,7 +63,7 @@ const Navigation = () => {
     }, [user]);
 
     useEffect(() => {
-        if (user && (user.is_email_verified || user.skip_verification)) {
+        if (user && (user.is_phone_verified || user.skip_verification)) {
             registerForPushNotifications().then(token => {
                 if (token) savePushTokenToBackend(token);
             });
@@ -103,8 +103,8 @@ const Navigation = () => {
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
                 </>
-            ) : !user.is_email_verified && !user.skip_verification ? (
-                <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+            ) : !user.is_phone_verified && !user.skip_verification ? (
+                <Stack.Screen name="VerifyPhone" component={VerifyPhoneScreen} />
             ) : user.role === 'supplier' ? (
                 <Stack.Screen name="SupplierHome" component={SupplierHomeScreen} />
             ) : (

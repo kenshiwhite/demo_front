@@ -491,9 +491,6 @@ export default function ClientHomeScreen() {
                 </TouchableOpacity>
             )}
 
-            {/* Supplier mini profile */}
-            {view === 'products' && renderSupplierHeader()}
-
             {/* Search + toggle */}
             {isProductView && (
                 <View style={styles.searchRow}>
@@ -570,6 +567,7 @@ export default function ClientHomeScreen() {
                     numColumns={2}
                     columnWrapperStyle={styles.gridRow}
                     contentContainerStyle={styles.gridList}
+                    ListHeaderComponent={view === 'products' ? renderSupplierHeader : null}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
@@ -588,6 +586,7 @@ export default function ClientHomeScreen() {
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderListProduct}
                     contentContainerStyle={styles.list}
+                    ListHeaderComponent={view === 'products' ? renderSupplierHeader : null}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
@@ -842,7 +841,7 @@ const styles = StyleSheet.create({
     // Supplier profile card
     supplierProfileCard: {
         backgroundColor: colors.card,
-        margin: spacing.lg,
+        marginBottom: spacing.lg,
         borderRadius: radius.xl,
         padding: spacing.lg,
         ...shadow.sm,

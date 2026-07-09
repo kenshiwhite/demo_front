@@ -14,6 +14,19 @@ export const login = async (username, password) => {
     return response.data;
 };
 
+export const requestPhoneLoginCode = async (phone) => {
+    const response = await client.post('/api/auth/phone-login/request/', { phone });
+    return response.data;
+};
+
+export const verifyPhoneLoginCode = async (phone, code) => {
+    const response = await client.post('/api/auth/phone-login/verify/', { phone, code });
+    const { access, refresh } = response.data;
+    await SecureStore.setItemAsync('access_token', access);
+    await SecureStore.setItemAsync('refresh_token', refresh);
+    return response.data;
+};
+
 export const logout = async () => {
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');

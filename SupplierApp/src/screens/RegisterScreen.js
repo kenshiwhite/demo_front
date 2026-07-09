@@ -45,7 +45,7 @@ export default function RegisterScreen({ navigation }) {
     };
 
     const handleRegister = async () => {
-        if (!form.username || !form.email || !form.password) {
+        if (!form.username || !form.email || !form.password || !form.phone) {
             Alert.alert('Ошибка', 'Заполните обязательные поля');
             return;
         }
@@ -68,6 +68,7 @@ export default function RegisterScreen({ navigation }) {
             let errorText = 'Регистрация не удалась.';
             if (msg?.username) errorText = 'Это имя пользователя уже занято.';
             else if (msg?.email) errorText = 'Этот email уже используется.';
+            else if (msg?.phone) errorText = Array.isArray(msg.phone) ? msg.phone[0] : msg.phone;
             Alert.alert('Ошибка', errorText);
         } finally {
             setLoading(false);
@@ -160,7 +161,7 @@ export default function RegisterScreen({ navigation }) {
                         autoCorrect={false}
                     />
                     <InputField
-                        label="Телефон"
+                        label="Телефон *"
                         value={form.phone}
                         onChangeText={(v) => handleChange('phone', v)}
                         placeholder="+7 (___) ___-__-__"
