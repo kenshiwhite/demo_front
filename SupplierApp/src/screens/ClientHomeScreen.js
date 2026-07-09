@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useCity } from '../context/CityContext';
+import CitySelectScreen from './CitySelectScreen';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, TextInput, ActivityIndicator,
@@ -42,11 +44,13 @@ export default function ClientHomeScreen() {
     const [quantityModal, setQuantityModal] = useState(false);
     const [selectedProductForCart, setSelectedProductForCart] = useState(null);
     const [cartQuantity, setCartQuantity] = useState('1');
+    const { selectedCity, cityLabel } = useCity();
+    const [showCitySelect, setShowCitySelect] = useState(false);
 
     useEffect(() => {
         loadAllProducts();
         loadSuppliers();
-    }, []);
+    }, [selectedCity]);
 
     useEffect(() => {
         if (view === 'requests') loadMyRequests();
@@ -54,7 +58,7 @@ export default function ClientHomeScreen() {
 
     const loadSuppliers = async () => {
         try {
-            const data = await getSuppliers();
+            const data = await getSuppliers(selectedCity);
             setSuppliers(data.results || data);
         } catch (e) {
             console.log('Не удалось загрузить поставщиков');
@@ -64,7 +68,7 @@ export default function ClientHomeScreen() {
     const loadAllProducts = async (searchText = '') => {
         setLoading(true);
         try {
-            const data = await getAllProducts(searchText);
+            const data = await getAllProducts(searchText, selectedCity);
             setProducts(data.results || data);
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
@@ -72,6 +76,7 @@ export default function ClientHomeScreen() {
             setLoading(false);
         }
     };
+
 
     const loadSupplierProducts = async (supplierId, searchText = '') => {
         setLoading(true);
@@ -393,7 +398,7 @@ export default function ClientHomeScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
+            {/* <View style={styles.header}>
                 <View>
                     <Text style={styles.headerGreeting}>Добро пожаловать</Text>
                     <Text style={styles.headerTitle} numberOfLines={1}>
@@ -403,8 +408,23 @@ export default function ClientHomeScreen() {
                             : view === 'requests' ? 'Мои заявки'
                             : 'Все товары'}
                     </Text>
-                </View>
+                </View> */}
+            <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.citySelector}
+                    onPress={() => setShowCitySelect(true)}
+                    activeOpacity={0.7}
+                >
+                    <Icon name="map_pin" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.cityLabel} numberOfLines={1}>
+                        {cityLabel || 'Выберите город'}
+                    </Text>
+                    <Icon name="chevronRight" size={12} color="rgba(255,255,255,0.8)" />
+                </TouchableOpacity>
                 <View style={styles.headerActions}>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
+                        <Icon name="user" size={18} color="#fff" />
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCart(true)}>
                         <Icon name="cart" size={18} color="#fff" />
                         {getTotalItems() > 0 && (
@@ -415,9 +435,6 @@ export default function ClientHomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowNotifications(true)}>
                         <Icon name="bell" size={18} color="#fff" />
-                    </TouchableOpacity>
-                                        <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
-                        <Icon name="user" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -730,6 +747,19 @@ export default function ClientHomeScreen() {
             {showProfile && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
                     <ProfileScreen onClose={() => setShowProfile(false)} />
+                </View>
+            )}
+
+            {showCitySelect && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <CitySelectScreen
+                        onClose={() => setShowCitySelect(false)}
+                        onSelect={() => {
+                            setShowCitySelect(false);
+                            loadAllProducts();
+                            loadSuppliers();
+                        }}
+                    />
                 </View>
             )}
         </View>
@@ -1197,4 +1227,20 @@ const styles = StyleSheet.create({
     },
     totalLabel: { fontSize: 14, fontWeight: '600', color: colors.primary },
     totalValue: { fontSize: 22, fontWeight: '800', color: colors.primary },
+    citySelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.full,
+        maxWidth: 160,
+    },
+    cityLabel: {
+        fontSize: 13,
+        color: '#fff',
+        fontWeight: '600',
+        flex: 1,
+    },
 });

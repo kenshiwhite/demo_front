@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import CitySelectScreen from "../screens/CitySelectScreen"
+import { useCity } from '../context/CityContext';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, ActivityIndicator, Alert,
@@ -53,9 +55,8 @@ export default function SupplierHomeScreen() {
     const [categories, setCategories] = useState([]);
     const [categoryModal, setCategoryModal] = useState(false);  
     const [unreadCount, setUnreadCount] = useState(0);
-
-    
-
+    const { selectedCity, cityLabel, selectCity } = useCity();    
+    const [showCitySelect, setShowCitySelect] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -465,21 +466,21 @@ export default function SupplierHomeScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
+            {/* <View style={styles.header}>
                 <View>
                     <Text style={styles.headerGreeting}>Добро пожаловать</Text>
                     <Text style={styles.headerName} numberOfLines={1}>
                         {user?.company_name || user?.username}
                     </Text>
                 </View>
-                <View style={styles.headerActions}>
+                <View style={styles.headerActions}> */}
                     {/* <TouchableOpacity
                         style={styles.headerIconBtn}
                         onPress={() => setShowCalendar(true)}
                     >
                         <Icon name="calendar" size={20} color="#fff" />
                     </TouchableOpacity> */}
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         style={styles.headerIconBtn}
                         onPress={() => setShowAnalytics(true)}
                     >
@@ -505,6 +506,45 @@ export default function SupplierHomeScreen() {
                         style={styles.headerIconBtn}
                         onPress={() => setShowProfile(true)}
                     >
+                        <Icon name="user" size={20} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </View> */}
+            <View style={styles.header}>
+                <View>
+                    <TouchableOpacity
+                        style={styles.citySelector}
+                        onPress={() => setShowCitySelect(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Icon name="map_pin" size={12} color="rgba(255,255,255,0.8)" />
+                        <Text style={styles.cityLabel} numberOfLines={1}>
+                            {cityLabel || 'Выберите город'}
+                        </Text>
+                        <Icon name="chevronRight" size={11} color="rgba(255,255,255,0.8)" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerName} numberOfLines={1}>
+                        {user?.company_name || user?.username}
+                    </Text>
+                </View>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAnalytics(true)}>
+                        <Icon name="bar_chart" size={20} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.headerIconBtn}
+                        onPress={() => { setShowNotifications(true); loadUnreadCount(); }}
+                    >
+                        <Icon name="bell" size={20} color="#fff" />
+                        {unreadCount > 0 && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
                         <Icon name="user" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
@@ -946,6 +986,13 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
+            {showCitySelect && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                    <CitySelectScreen
+                        onClose={() => setShowCitySelect(false)}
+                    />
+                </View>
+            )}
         </View>
     );
 }
@@ -1353,5 +1400,22 @@ const styles = StyleSheet.create({
     categoryOptionTextActive: {
         color: colors.primary,
         fontWeight: '700',
+    },
+    citySelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 4,
+        borderRadius: radius.full,
+        alignSelf: 'flex-start',
+        marginBottom: 4,
+    },
+    cityLabel: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.9)',
+        fontWeight: '600',
+        maxWidth: 120,
     },
 });

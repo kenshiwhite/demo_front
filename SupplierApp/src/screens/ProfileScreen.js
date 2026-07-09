@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import Icon from '../components/Icon';
+import { useCity } from '../context/CityContext';
+import CitySelectScreen from './CitySelectScreen';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Alert, Modal,
@@ -16,7 +19,9 @@ export default function ProfileScreen({ onClose }) {
     const [loading, setLoading] = useState(false);
     const [passwordModal, setPasswordModal] = useState(false);
     const [emailModal, setEmailModal] = useState(false);
-
+        // inside component:
+    const { selectedCity, cityLabel, selectCity } = useCity();
+    const [showCitySelect, setShowCitySelect] = useState(false);
     const [form, setForm] = useState({
         company_name: user?.company_name || '',
         phone: user?.phone || '',
@@ -38,6 +43,7 @@ export default function ProfileScreen({ onClose }) {
                 company_name: form.company_name,
                 phone: form.phone,
                 description: form.description,
+                city: selectedCity || '',
             });
             const updatedUser = await client.get('/api/auth/me/');
             await signIn(updatedUser.data);
@@ -182,6 +188,29 @@ export default function ProfileScreen({ onClose }) {
                             />
                         ) : (
                             <Text style={styles.fieldValue}>{user?.phone || '—'}</Text>
+                        )}
+                    </View>
+                    <Divider />
+                    <View style={styles.field}>
+                        <Text style={styles.fieldLabel}>Город</Text>
+                        {editing ? (
+                            <TouchableOpacity
+                                style={styles.cityPickerBtn}
+                                onPress={() => setShowCitySelect(true)}
+                            >
+                                <Icon name="map_pin" size={14} color={colors.primary} />
+                                <Text style={styles.cityPickerBtnText}>
+                                    {cityLabel || 'Выберите город'}
+                                </Text>
+                                <Icon name="chevronRight" size={14} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={styles.cityDisplayRow}>
+                                <Icon name="map_pin" size={14} color={colors.textTertiary} />
+                                <Text style={styles.fieldValue}>
+                                    {cityLabel || '—'}
+                                </Text>
+                            </View>
                         )}
                     </View>
                     <Divider />
@@ -354,6 +383,15 @@ export default function ProfileScreen({ onClose }) {
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
+
+            {showCitySelect && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
+                    <CitySelectScreen
+                        onClose={() => setShowCitySelect(false)}
+                        onSelect={() => setShowCitySelect(false)}
+                    />
+                </View>
+            )}
         </View>
     );
 }
@@ -455,4 +493,24 @@ const styles = StyleSheet.create({
     },
     modalTitle: { ...typography.h2, marginBottom: spacing.xs },
     modalSubtitle: { ...typography.bodySmall, marginBottom: spacing.xl },
+    cityPickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        backgroundColor: colors.primaryLight,
+        borderRadius: radius.md,
+        padding: spacing.md,
+        marginTop: spacing.xs,
+    },
+    cityPickerBtnText: {
+        flex: 1,
+        fontSize: 14,
+        color: colors.primary,
+        fontWeight: '600',
+    },
+    cityDisplayRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
 });

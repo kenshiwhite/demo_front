@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useCity } from '../context/CityContext';
+import Icon from '../components/Icon';
+import CitySelectScreen from './CitySelectScreen';
 import {
-    View, Text, TouchableOpacity, StyleSheet,
-    ScrollView, KeyboardAvoidingView, Platform, Alert
+    View,
+    Text,
+    TouchableOpacity,
+    StyleSheet,
+    ScrollView,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+    Modal,
 } from 'react-native';
 import { register } from '../api/auth';
 import { InputField, Button } from '../components/UI';
 import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
 
 export default function RegisterScreen({ navigation }) {
+    const { selectedCity, cityLabel, selectCity } = useCity();
+    const [showCitySelect, setShowCitySelect] = useState(false);
+
     const [form, setForm] = useState({
         username: '',
         email: '',
@@ -15,7 +28,16 @@ export default function RegisterScreen({ navigation }) {
         role: 'client',
         company_name: '',
         phone: '',
+        city: selectedCity || '',
     });
+
+    // sync city from context into form
+    useEffect(() => {
+        if (selectedCity) {
+            setForm(p => ({ ...p, city: selectedCity }));
+        }
+    }, [selectedCity]);
+
     const [loading, setLoading] = useState(false);
 
     const handleChange = (field, value) => {
@@ -31,9 +53,13 @@ export default function RegisterScreen({ navigation }) {
             Alert.alert('Ошибка', 'Пароль должен быть не менее 8 символов');
             return;
         }
+        if (!form.city) {
+            Alert.alert('Ошибка', 'Выберите город');
+            return;
+        }
         setLoading(true);
         try {
-            await register(form);
+            await register(form); // form already contains city
             Alert.alert('Успешно', 'Аккаунт создан! Войдите в систему.', [
                 { text: 'OK', onPress: () => navigation.navigate('Login') }
             ]);
@@ -140,6 +166,17 @@ export default function RegisterScreen({ navigation }) {
                         placeholder="+7 (___) ___-__-__"
                         keyboardType="phone-pad"
                     />
+                    <TouchableOpacity
+                        style={styles.cityPickerBtn}
+                        onPress={() => setShowCitySelect(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Icon name="map_pin" size={16} color={cityLabel ? colors.primary : colors.textTertiary} />
+                        <Text style={[styles.cityPickerText, !cityLabel && { color: colors.placeholder }]}>
+                            {cityLabel || 'Выберите город'}
+                        </Text>
+                        <Icon name="chevronRight" size={14} color={colors.textTertiary} />
+                    </TouchableOpacity>
                 </View>
 
                 <Button
@@ -148,6 +185,18 @@ export default function RegisterScreen({ navigation }) {
                     loading={loading}
                     style={{ marginTop: spacing.xl }}
                 />
+
+                {/* {showCitySelect && (
+                    <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                        <CitySelectScreen
+                            onClose={() => setShowCitySelect(false)}
+                            onSelect={(city) => {
+                                setForm(p => ({ ...p, city: city.value }));
+                                setShowCitySelect(false);
+                            }}
+                        />
+                    </View>
+                )} */}
 
                 <TouchableOpacity
                     style={styles.loginLink}
@@ -159,6 +208,24 @@ export default function RegisterScreen({ navigation }) {
                     </Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            <Modal
+                visible={showCitySelect}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setShowCitySelect(false)}
+            >
+                <CitySelectScreen
+                    onClose={() => setShowCitySelect(false)}
+                    onSelect={(city) => {
+                        setForm((p) => ({
+                            ...p,
+                            city: city.value,
+                        }));
+                        setShowCitySelect(false);
+                    }}
+                />
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -216,4 +283,22 @@ const styles = StyleSheet.create({
     loginLink: { marginTop: spacing.xl, alignItems: 'center' },
     loginLinkText: { ...typography.bodySmall },
     loginLinkBold: { color: colors.primary, fontWeight: '600' },
+    cityPickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        backgroundColor: colors.card,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        minHeight: 50,
+        marginBottom: spacing.md,
+    },
+    cityPickerText: {
+        flex: 1,
+        fontSize: 15,
+        color: colors.text,
+    },
 });
