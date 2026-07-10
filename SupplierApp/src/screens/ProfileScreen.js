@@ -117,7 +117,7 @@ export default function ProfileScreen({ onClose }) {
     };
 
     const getRoleText = (role) => {
-        const roles = { client: 'Клиент', supplier: 'Поставщик', admin: 'Администратор' };
+        const roles = { client: 'Клиент', supplier: 'Поставщик', sales_rep: 'Менеджер по продажам', admin: 'Администратор' };
         return roles[role] || role;
     };
 

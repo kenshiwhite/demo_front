@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { InputField, Button, SectionTitle, Divider } from '../components/UI';
 import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 import Icon from '../components/Icon';
+import { OpenAddressInMap } from '../components/AddressMap';
 
 export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     const { user } = useAuth();
@@ -195,7 +196,10 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                                 autoCorrect
                             />
                         ) : (
-                            <Text style={styles.infoText}>{request.delivery_address || '—'}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.infoText}>{request.delivery_address || '—'}</Text>
+                                <OpenAddressInMap address={request.delivery_address} />
+                            </View>
                         )}
                     </View>
                     <View style={styles.infoRow}>

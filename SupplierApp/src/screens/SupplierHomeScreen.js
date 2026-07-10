@@ -21,6 +21,7 @@ import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styl
 import Icon from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import CalendarScreen from './CalendarScreen';
+import BusinessDirectoryScreen from './BusinessDirectoryScreen';
 
 
 export default function SupplierHomeScreen() {
@@ -76,7 +77,7 @@ export default function SupplierHomeScreen() {
 
     useEffect(() => {
         if (view === 'requests') loadRequests();
-        else loadProducts();
+        else if (view === 'products') loadProducts();
     }, [view]);
 
     useEffect(() => {
@@ -403,6 +404,7 @@ export default function SupplierHomeScreen() {
                         </View>
                     )}
                     <TouchableOpacity
+                        disabled={user?.role !== 'supplier'}
                         style={[
                             styles.availabilityToggle,
                             { backgroundColor: item.is_available ? colors.success : colors.danger }
@@ -443,7 +445,7 @@ export default function SupplierHomeScreen() {
                         </Text>
                     </View>
 
-                    <View style={styles.productActions}>
+                    {user?.role === 'supplier' && <View style={styles.productActions}>
                         <TouchableOpacity
                             style={styles.editBtn}
                             onPress={() => openProductModal(item)}
@@ -457,7 +459,7 @@ export default function SupplierHomeScreen() {
                         >
                             <Icon name="trash" size={15} color={colors.danger} />
                         </TouchableOpacity>
-                    </View>
+                    </View>}
                 </View>
             </View>
         );
@@ -528,9 +530,9 @@ export default function SupplierHomeScreen() {
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAnalytics(true)}>
+                    {user?.role === 'supplier' && <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAnalytics(true)}>
                         <Icon name="bar_chart" size={20} color="#fff" />
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                     <TouchableOpacity
                         style={styles.headerIconBtn}
                         onPress={() => { setShowNotifications(true); loadUnreadCount(); }}
@@ -558,6 +560,13 @@ export default function SupplierHomeScreen() {
                 >
                     <Icon name="store" size={16} color={view === 'home' ? colors.primary : colors.textTertiary} />
                     <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>Главная</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, view === 'business' && styles.tabActive]}
+                    onPress={() => setView('business')}
+                >
+                    <Icon name="user" size={16} color={view === 'business' ? colors.primary : colors.textTertiary} />
+                    <Text style={[styles.tabText, view === 'business' && styles.tabTextActive]}>Клиенты</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, view === 'requests' && styles.tabActive]}
@@ -596,7 +605,9 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
-            {view === 'home' ? (
+            {view === 'business' ? (
+                <BusinessDirectoryScreen isSupplier={user?.role === 'supplier'} />
+            ) : view === 'home' ? (
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
                 />
@@ -638,7 +649,7 @@ export default function SupplierHomeScreen() {
             )}
 
             {/* FAB */}
-            {view === 'products' && (
+            {view === 'products' && user?.role === 'supplier' && (
                 <TouchableOpacity
                     style={styles.fab}
                     onPress={() => openProductModal()}

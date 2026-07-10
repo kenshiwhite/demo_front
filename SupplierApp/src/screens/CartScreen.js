@@ -11,6 +11,7 @@ import client from '../api/client';
 import { InputField, Button } from '../components/UI';
 import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 import Icon from '../components/Icon';
+import { OpenAddressInMap } from '../components/AddressMap';
 import ProductDetailScreen from './ProductDetailScreen';
 
 export default function CartScreen({ onClose }) {
@@ -258,6 +259,7 @@ export default function CartScreen({ onClose }) {
                                         autoCapitalize="sentences"
                                         autoCorrect
                                     />
+                                    <OpenAddressInMap address={deliveryAddress} />
                                     <InputField
                                         label="Желаемая дата доставки"
                                         value={deliveryDate}

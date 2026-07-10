@@ -105,7 +105,7 @@ const Navigation = () => {
                 </>
             ) : !user.is_phone_verified && !user.skip_verification ? (
                 <Stack.Screen name="VerifyPhone" component={VerifyPhoneScreen} />
-            ) : user.role === 'supplier' ? (
+            ) : ['supplier', 'sales_rep'].includes(user.role) ? (
                 <Stack.Screen name="SupplierHome" component={SupplierHomeScreen} />
             ) : (
                 <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
