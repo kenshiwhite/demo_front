@@ -4,10 +4,11 @@ import { useCity } from '../context/CityContext';
 import CitySelectScreen from './CitySelectScreen';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, Alert, Modal,
+    StyleSheet, Alert, Modal, Image,
     KeyboardAvoidingView, Platform,
     TouchableWithoutFeedback, Keyboard
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { InputField, Button, Card, SectionTitle, Divider } from '../components/UI';
@@ -105,6 +106,100 @@ export default function ProfileScreen({ onClose }) {
         }
     };
 
+    const refreshUser = async () => {
+        const updatedUser = await client.get('/api/auth/me/');
+        await signIn(updatedUser.data);
+        return updatedUser.data;
+    };
+
+    const handlePickProfilePicture = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert('Нет доступа', 'Разрешите доступ к фото, чтобы обновить изображение профиля.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+
+        if (result.canceled) return;
+
+        const asset = result.assets[0];
+        const formData = new FormData();
+        formData.append('profile_picture', {
+            uri: asset.uri,
+            type: asset.mimeType || 'image/jpeg',
+            name: asset.fileName || 'profile.jpg',
+        });
+
+        setLoading(true);
+        try {
+            await client.patch('/api/auth/profile/', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            await refreshUser();
+            Alert.alert('Готово', 'Фото профиля обновлено');
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось обновить фото профиля');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteProfilePicture = () => {
+        Alert.alert(
+            'Удалить фото',
+            'Удалить текущее фото профиля?',
+            [
+                { text: 'Отмена', style: 'cancel' },
+                {
+                    text: 'Удалить',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await client.delete('/api/auth/profile/picture/');
+                            await refreshUser();
+                        } catch (e) {
+                            Alert.alert('Ошибка', 'Не удалось удалить фото профиля');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            'Удалить аккаунт',
+            'Аккаунт будет удален навсегда. Это действие нельзя отменить.',
+            [
+                { text: 'Отмена', style: 'cancel' },
+                {
+                    text: 'Удалить',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await client.delete('/api/auth/account/');
+                            await signOut();
+                        } catch (e) {
+                            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось удалить аккаунт');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleLogout = () => {
         Alert.alert(
             'Выход',
@@ -142,10 +237,27 @@ export default function ProfileScreen({ onClose }) {
             <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
                 {/* Avatar section */}
                 <View style={styles.avatarSection}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                            {user?.company_name?.[0] || user?.username?.[0]?.toUpperCase()}
-                        </Text>
+                    <TouchableOpacity style={styles.avatar} onPress={handlePickProfilePicture} disabled={loading}>
+                        {user?.profile_picture ? (
+                            <Image source={{ uri: user.profile_picture }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>
+                                {user?.company_name?.[0] || user?.username?.[0]?.toUpperCase()}
+                            </Text>
+                        )}
+                        <View style={styles.avatarEditBadge}>
+                            <Icon name="edit" size={13} color="#fff" />
+                        </View>
+                    </TouchableOpacity>
+                    <View style={styles.avatarActions}>
+                        <TouchableOpacity style={styles.avatarActionBtn} onPress={handlePickProfilePicture} disabled={loading}>
+                            <Text style={styles.avatarActionText}>{user?.profile_picture ? 'Обновить фото' : 'Загрузить фото'}</Text>
+                        </TouchableOpacity>
+                        {user?.profile_picture ? (
+                            <TouchableOpacity style={styles.avatarActionBtn} onPress={handleDeleteProfilePicture} disabled={loading}>
+                                <Text style={[styles.avatarActionText, { color: colors.danger }]}>Удалить фото</Text>
+                            </TouchableOpacity>
+                        ) : null}
                     </View>
                     <Text style={styles.username}>{user?.username}</Text>
                     <View style={styles.roleBadge}>
@@ -305,6 +417,10 @@ export default function ProfileScreen({ onClose }) {
                     <Text style={styles.logoutText}>Выйти из аккаунта</Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} disabled={loading}>
+                    <Text style={styles.deleteAccountText}>Удалить аккаунт</Text>
+                </TouchableOpacity>
+
                 <View style={{ height: 40 }} />
             </ScrollView>
 
@@ -428,6 +544,38 @@ const styles = StyleSheet.create({
         ...shadow.lg,
     },
     avatarText: { color: '#fff', fontSize: 36, fontWeight: '800' },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 44,
+    },
+    avatarEditBadge: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.primaryDark,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: colors.card,
+    },
+    avatarActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        marginBottom: spacing.md,
+    },
+    avatarActionBtn: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.full,
+        backgroundColor: colors.background,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    avatarActionText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
     username: { ...typography.h2, marginBottom: spacing.sm },
     roleBadge: {
         backgroundColor: colors.primaryLight,
@@ -480,6 +628,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     logoutText: { color: colors.danger, fontWeight: '600', fontSize: 16 },
+    deleteAccountBtn: {
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.md,
+        padding: spacing.lg,
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+    },
+    deleteAccountText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',

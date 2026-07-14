@@ -93,7 +93,7 @@ export default function SupplierHomeScreen() {
 
     const filteredRequests = requests.filter(r => {
         if (requestFilter === 'active') return ['pending', 'accepted'].includes(r.status);
-        if (requestFilter === 'history') return ['fulfilled', 'declined'].includes(r.status);
+        if (requestFilter === 'history') return ['fulfilled', 'declined', 'cancelled'].includes(r.status);
         return true;
     });
 
@@ -285,6 +285,7 @@ export default function SupplierHomeScreen() {
             accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
             declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
             fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
+            cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
         };
         return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight };
     };

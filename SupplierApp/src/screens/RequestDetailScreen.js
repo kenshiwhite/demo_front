@@ -13,7 +13,9 @@ import { OpenAddressInMap } from '../components/AddressMap';
 export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     const { user } = useAuth();
     const isClient = user.role === 'client';
+    const isSupplierStaff = user.role === 'supplier' || user.role === 'sales_rep';
     const isEditable = isClient && request.status === 'pending';
+    const canCancel = (isClient || isSupplierStaff) && ['pending', 'accepted'].includes(request.status);
 
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
@@ -29,6 +31,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
             accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
             declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
             fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
+            cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
         };
         return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };
@@ -51,6 +54,29 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось обновить заявку');
         }
+    };
+
+    const handleCancelRequest = () => {
+        Alert.alert(
+            'Отменить заявку',
+            'Отменить эту заявку для обеих сторон?',
+            [
+                { text: 'Оставить', style: 'cancel' },
+                {
+                    text: 'Отменить',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await client.post(`/api/requests/${request.id}/cancel/`);
+                            Alert.alert('Отменено', 'Заявка отменена');
+                            onUpdate();
+                        } catch (e) {
+                            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось отменить заявку');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const items = request.items || [];
@@ -240,6 +266,20 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                     )}
                 </View>
 
+                {request.status === 'cancelled' && (
+                    <View style={styles.section}>
+                        <SectionTitle label="Отмена" />
+                        <Text style={styles.noteText}>
+                            {request.cancel_reason || 'Заявка была отменена.'}
+                        </Text>
+                        {request.cancelled_at ? (
+                            <Text style={styles.cancelledAt}>
+                                {new Date(request.cancelled_at).toLocaleString('ru-RU')}
+                            </Text>
+                        ) : null}
+                    </View>
+                )}
+
                 {/* Supplier response */}
                 {request.response && (
                     <View style={[styles.section, styles.responseSection]}>
@@ -269,6 +309,13 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                         variant="secondary"
                         style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
                     />
+                )}
+
+                {canCancel && !editing && (
+                    <TouchableOpacity style={styles.cancelRequestBtn} onPress={handleCancelRequest}>
+                        <Icon name="x" size={16} color={colors.danger} />
+                        <Text style={styles.cancelRequestText}>Отменить заявку</Text>
+                    </TouchableOpacity>
                 )}
 
                 <View style={{ height: 40 }} />
@@ -360,6 +407,21 @@ const styles = StyleSheet.create({
     totalLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
     totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
     noteText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    cancelledAt: { fontSize: 12, color: colors.textTertiary, marginTop: spacing.sm },
+    cancelRequestBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.md,
+        padding: spacing.lg,
+        backgroundColor: '#FEF2F2',
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+    },
+    cancelRequestText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
     responseText: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.md },
     offeredPriceRow: {
         flexDirection: 'row',

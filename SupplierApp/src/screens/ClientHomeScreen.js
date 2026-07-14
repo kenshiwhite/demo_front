@@ -145,6 +145,7 @@ export default function ClientHomeScreen() {
             accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
             declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
             fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
+            cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
         };
         return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };

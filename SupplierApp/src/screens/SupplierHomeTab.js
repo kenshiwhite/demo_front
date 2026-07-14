@@ -57,6 +57,7 @@ export default function SupplierHomeTab({ onRequestPress }) {
         accepted: colors.success,
         declined: colors.danger,
         fulfilled: colors.purple,
+        cancelled: colors.danger,
     }[status] || colors.textSecondary);
 
     const getStatusConfig = (status) => ({
@@ -64,6 +65,7 @@ export default function SupplierHomeTab({ onRequestPress }) {
         accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
         declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
         fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
+        cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
     }[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' });
 
     const buildCalendarData = (data) => {

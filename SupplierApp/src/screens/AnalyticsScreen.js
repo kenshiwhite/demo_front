@@ -197,6 +197,7 @@ export default function AnalyticsScreen({ onClose }) {
                             { key: 'accepted', label: 'Принято', color: '#10B981' },
                             { key: 'fulfilled', label: 'Выполнено', color: '#6366F1' },
                             { key: 'declined', label: 'Отклонено', color: '#EF4444' },
+                            { key: 'cancelled', label: 'Отменено', color: '#EF4444' },
                         ].map(s => {
                             const count = data?.status_counts?.[s.key] || 0;
                             const total = Object.values(data?.status_counts || {}).reduce((a, b) => a + b, 0);

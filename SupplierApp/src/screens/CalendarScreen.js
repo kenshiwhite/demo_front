@@ -59,6 +59,7 @@ export default function CalendarScreen({ onClose, userRole }) {
             accepted: colors.success,
             declined: colors.danger,
             fulfilled: colors.purple,
+            cancelled: colors.danger,
         };
         return colors_map[status] || colors.textSecondary;
     };
@@ -97,7 +98,7 @@ export default function CalendarScreen({ onClose, userRole }) {
             if (statuses.includes('pending')) dotColor = colors.warning;
             else if (statuses.includes('accepted')) dotColor = colors.success;
             else if (statuses.includes('fulfilled')) dotColor = colors.purple;
-            else if (statuses.includes('declined')) dotColor = colors.danger;
+            else if (statuses.includes('declined') || statuses.includes('cancelled')) dotColor = colors.danger;
 
             const dots = statuses.slice(0, 3).map(s => ({
                 key: s,
@@ -145,6 +146,7 @@ export default function CalendarScreen({ onClose, userRole }) {
             accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
             declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
             fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
+            cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
         };
         return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };
