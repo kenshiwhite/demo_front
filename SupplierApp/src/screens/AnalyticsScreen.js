@@ -222,6 +222,29 @@ export default function AnalyticsScreen({ onClose }) {
                         })}
                     </View>
 
+                    {data?.sales_reps?.length > 0 && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Менеджеры по продажам</Text>
+                            <Text style={styles.sectionSubtitle}>Результаты за выбранный период</Text>
+                            {data.sales_reps.map(rep => (
+                                <View key={rep.id} style={styles.salesRepRow}>
+                                    <View style={styles.salesRepAvatar}>
+                                        <Text style={styles.salesRepAvatarText}>{rep.name?.[0]?.toUpperCase() || 'М'}</Text>
+                                    </View>
+                                    <View style={styles.salesRepInfo}>
+                                        <Text style={styles.salesRepName}>{rep.name}</Text>
+                                        <Text style={styles.salesRepDetail}>
+                                            {rep.client_count} клиентов · {rep.request_count} заявок · {rep.fulfilled_count} выполнено
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.salesRepRevenue}>
+                                        {parseInt(rep.revenue || 0).toLocaleString('ru-RU')} ₸
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
                     {/* Top products list */}
                     {data?.top_products?.length > 0 && (
                         <View style={styles.section}>
@@ -398,6 +421,7 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
+    sectionSubtitle: { fontSize: 12, color: '#666', marginTop: -10, marginBottom: 12 },
     statusRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -441,6 +465,19 @@ const styles = StyleSheet.create({
         minWidth: 24,
         textAlign: 'right',
     },
+    salesRepRow: {
+        flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
+        borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0',
+    },
+    salesRepAvatar: {
+        width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF',
+        alignItems: 'center', justifyContent: 'center', marginRight: 10,
+    },
+    salesRepAvatarText: { color: '#4F46E5', fontSize: 15, fontWeight: '700' },
+    salesRepInfo: { flex: 1 },
+    salesRepName: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
+    salesRepDetail: { fontSize: 11, color: '#666', marginTop: 2 },
+    salesRepRevenue: { fontSize: 13, fontWeight: '700', color: '#10B981', marginLeft: 8 },
     productRow: {
         flexDirection: 'row',
         alignItems: 'center',

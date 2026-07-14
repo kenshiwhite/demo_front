@@ -18,6 +18,14 @@ const icons = {
             <Circle cx="12" cy="7" r="4" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
         </Svg>
     ),
+    team: (color, size) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Circle cx="12" cy="7" r="3.1" stroke={color} strokeWidth="1.8" />
+            <Path d="M5.5 20v-1.2a5.5 5.5 0 0 1 11 0V20" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+            <Path d="M5.9 11a2.6 2.6 0 1 0-1.6-4.7M18.1 11a2.6 2.6 0 1 1 1.6-4.7" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+            <Path d="M2.7 19.8v-.7a4.1 4.1 0 0 1 2.1-3.6M21.3 19.8v-.7a4.1 4.1 0 0 0-2.1-3.6" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </Svg>
+    ),
     cart: (color, size) => (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
             <Path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

@@ -469,7 +469,7 @@ export default function SupplierHomeScreen() {
         <View style={styles.container}>
             {/* Header */}
             {/* <View style={styles.header}>
-                <View>
+                <View style={styles.headerIdentity}>
                     <Text style={styles.headerGreeting}>Добро пожаловать</Text>
                     <Text style={styles.headerName} numberOfLines={1}>
                         {user?.company_name || user?.username}
@@ -513,7 +513,7 @@ export default function SupplierHomeScreen() {
                 </View>
             </View> */}
             <View style={styles.header}>
-                <View>
+                <View style={styles.headerIdentity}>
                     <TouchableOpacity
                         style={styles.citySelector}
                         onPress={() => setShowCitySelect(true)}
@@ -530,6 +530,14 @@ export default function SupplierHomeScreen() {
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        style={styles.headerBusinessBtn}
+                        onPress={() => setView('business')}
+                        activeOpacity={0.8}
+                        accessibilityLabel="Клиенты и сотрудники"
+                    >
+                        <Icon name="team" size={20} color="#fff" />
+                    </TouchableOpacity>
                     {user?.role === 'supplier' && <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAnalytics(true)}>
                         <Icon name="bar_chart" size={20} color="#fff" />
                     </TouchableOpacity>}
@@ -560,13 +568,6 @@ export default function SupplierHomeScreen() {
                 >
                     <Icon name="store" size={16} color={view === 'home' ? colors.primary : colors.textTertiary} />
                     <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>Главная</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, view === 'business' && styles.tabActive]}
-                    onPress={() => setView('business')}
-                >
-                    <Icon name="user" size={16} color={view === 'business' ? colors.primary : colors.textTertiary} />
-                    <Text style={[styles.tabText, view === 'business' && styles.tabTextActive]}>Клиенты</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, view === 'requests' && styles.tabActive]}
@@ -1020,8 +1021,14 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
     },
     headerGreeting: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+    headerIdentity: { flex: 1, minWidth: 0, marginRight: spacing.sm },
     headerName: { fontSize: 18, fontWeight: '700', color: '#fff', maxWidth: 180 },
     headerActions: { flexDirection: 'row', gap: spacing.sm },
+    headerBusinessBtn: {
+        width: 38, height: 38, borderRadius: 19,
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.16)',
+    },
     headerIconBtn: {
         width: 38,
         height: 38,
