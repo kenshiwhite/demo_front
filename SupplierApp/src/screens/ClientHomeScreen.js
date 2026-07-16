@@ -8,7 +8,7 @@ import {
     Platform, TouchableWithoutFeedback, Keyboard,
     ScrollView, Dimensions
 } from 'react-native';
-import { getSuppliers, getProducts, getAllProducts } from '../api/catalog';
+import { getSuppliers, getProducts, getAllProducts, getCategories } from '../api/catalog';
 import { getMyRequests } from '../api/requests';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -47,10 +47,47 @@ export default function ClientHomeScreen() {
     const { selectedCity, cityLabel } = useCity();
     const [showCitySelect, setShowCitySelect] = useState(false);
 
+    // Category / price / sort filters
+    const [categories, setCategories] = useState([]);
+    const [showFilters, setShowFilters] = useState(false);
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
+    const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'price_asc' | 'price_desc'
+    // Draft state edited inside the modal; only committed to the active
+    // filters above when the user taps "Apply".
+    const [draftCategories, setDraftCategories] = useState([]);
+    const [draftMinPrice, setDraftMinPrice] = useState('');
+    const [draftMaxPrice, setDraftMaxPrice] = useState('');
+    const [draftSortBy, setDraftSortBy] = useState('newest');
+
+    const activeFilterCount =
+        selectedCategories.length +
+        (minPrice ? 1 : 0) +
+        (maxPrice ? 1 : 0) +
+        (sortBy !== 'newest' ? 1 : 0);
+
+    const sortToOrdering = (sort) => {
+        if (sort === 'price_asc') return 'price';
+        if (sort === 'price_desc') return '-price';
+        return '-created_at';
+    };
+
+    const currentFilters = () => ({
+        categories: selectedCategories,
+        minPrice,
+        maxPrice,
+        ordering: sortToOrdering(sortBy),
+    });
+
     useEffect(() => {
         loadAllProducts();
         loadSuppliers();
     }, [selectedCity]);
+
+    useEffect(() => {
+        getCategories().then(setCategories).catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (view === 'requests') loadMyRequests();
@@ -65,10 +102,10 @@ export default function ClientHomeScreen() {
         }
     };
 
-    const loadAllProducts = async (searchText = '') => {
+    const loadAllProducts = async (searchText = '', filters = currentFilters()) => {
         setLoading(true);
         try {
-            const data = await getAllProducts(searchText, selectedCity);
+            const data = await getAllProducts(searchText, selectedCity, filters);
             setProducts(data.results || data);
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
@@ -78,10 +115,10 @@ export default function ClientHomeScreen() {
     };
 
 
-    const loadSupplierProducts = async (supplierId, searchText = '') => {
+    const loadSupplierProducts = async (supplierId, searchText = '', filters = currentFilters()) => {
         setLoading(true);
         try {
-            const data = await getProducts(supplierId, searchText);
+            const data = await getProducts(supplierId, searchText, filters);
             setProducts(data.results || data);
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
@@ -116,6 +153,57 @@ export default function ClientHomeScreen() {
         setView('products');
         setSearch('');
         loadSupplierProducts(supplier.id);
+    };
+
+    const openFilters = () => {
+        setDraftCategories(selectedCategories);
+        setDraftMinPrice(minPrice);
+        setDraftMaxPrice(maxPrice);
+        setDraftSortBy(sortBy);
+        setShowFilters(true);
+    };
+
+    const toggleDraftCategory = (value) => {
+        setDraftCategories((prev) =>
+            prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]
+        );
+    };
+
+    const applyFilters = () => {
+        setSelectedCategories(draftCategories);
+        setMinPrice(draftMinPrice);
+        setMaxPrice(draftMaxPrice);
+        setSortBy(draftSortBy);
+        setShowFilters(false);
+        const filters = {
+            categories: draftCategories,
+            minPrice: draftMinPrice,
+            maxPrice: draftMaxPrice,
+            ordering: sortToOrdering(draftSortBy),
+        };
+        if (view === 'products' && selectedSupplier) {
+            loadSupplierProducts(selectedSupplier.id, search, filters);
+        } else {
+            loadAllProducts(search, filters);
+        }
+    };
+
+    const resetFilters = () => {
+        setDraftCategories([]);
+        setDraftMinPrice('');
+        setDraftMaxPrice('');
+        setDraftSortBy('newest');
+        setSelectedCategories([]);
+        setMinPrice('');
+        setMaxPrice('');
+        setSortBy('newest');
+        setShowFilters(false);
+        const filters = { categories: [], minPrice: '', maxPrice: '', ordering: '-created_at' };
+        if (view === 'products' && selectedSupplier) {
+            loadSupplierProducts(selectedSupplier.id, search, filters);
+        } else {
+            loadAllProducts(search, filters);
+        }
     };
 
     const handleAddToCart = (item) => {
@@ -155,12 +243,19 @@ export default function ClientHomeScreen() {
         return (
             <View style={styles.supplierProfileCard}>
                 <View style={styles.supplierProfileTop}>
-                    <View style={styles.supplierProfileAvatar}>
-                        <Text style={styles.supplierProfileAvatarText}>
-                            {selectedSupplier.company_name?.[0] ||
-                             selectedSupplier.username?.[0]?.toUpperCase()}
-                        </Text>
-                    </View>
+                    {selectedSupplier.profile_picture ? (
+                        <Image
+                            source={{ uri: selectedSupplier.profile_picture }}
+                            style={styles.supplierProfileAvatar}
+                        />
+                    ) : (
+                        <View style={styles.supplierProfileAvatar}>
+                            <Text style={styles.supplierProfileAvatarText}>
+                                {selectedSupplier.company_name?.[0] ||
+                                 selectedSupplier.username?.[0]?.toUpperCase()}
+                            </Text>
+                        </View>
+                    )}
                     <View style={styles.supplierProfileInfo}>
                         <Text style={styles.supplierProfileName}>
                             {selectedSupplier.company_name || selectedSupplier.username}
@@ -208,11 +303,15 @@ export default function ClientHomeScreen() {
             onPress={() => handleSupplierPress(item)}
             activeOpacity={0.7}
         >
-            <View style={styles.supplierAvatar}>
-                <Text style={styles.supplierAvatarText}>
-                    {item.company_name?.[0] || item.username[0].toUpperCase()}
-                </Text>
-            </View>
+            {item.profile_picture ? (
+                <Image source={{ uri: item.profile_picture }} style={styles.supplierAvatar} />
+            ) : (
+                <View style={styles.supplierAvatar}>
+                    <Text style={styles.supplierAvatarText}>
+                        {item.company_name?.[0] || item.username[0].toUpperCase()}
+                    </Text>
+                </View>
+            )}
             <View style={styles.supplierInfo}>
                 <Text style={styles.supplierName}>
                     {item.company_name || item.username}
@@ -505,6 +604,14 @@ export default function ClientHomeScreen() {
                             onChangeText={handleSearch}
                         />
                     </View>
+                    <TouchableOpacity style={styles.toggleBtn} onPress={openFilters}>
+                        <Icon name="filter" size={18} color={colors.primary} />
+                        {activeFilterCount > 0 && (
+                            <View style={styles.filterBadge}>
+                                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.toggleBtn}
                         onPress={() => setDisplayMode(d => d === 'grid' ? 'list' : 'grid')}
@@ -693,6 +800,97 @@ export default function ClientHomeScreen() {
                                 />
                             </View>
                         </KeyboardAvoidingView>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+
+            {/* Filters Modal */}
+            <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
+                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+                    <View style={styles.modalOverlay}>
+                        <ScrollView style={[styles.modalContent, { maxHeight: '85%' }]}>
+                            <View style={styles.modalHandle} />
+                            <View style={styles.filterHeaderRow}>
+                                <Text style={styles.modalTitle}>Фильтры</Text>
+                                <TouchableOpacity onPress={() => setShowFilters(false)}>
+                                    <Icon name="x" size={20} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <Text style={styles.filterSectionLabel}>Категория</Text>
+                                <View style={styles.categoryChipsWrap}>
+                                    {categories.map((cat) => {
+                                        const active = draftCategories.includes(cat.value);
+                                        return (
+                                            <TouchableOpacity
+                                                key={cat.value}
+                                                style={[styles.categoryChip, active && styles.categoryChipActive]}
+                                                onPress={() => toggleDraftCategory(cat.value)}
+                                            >
+                                                <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
+                                                    {cat.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
+                                <Text style={styles.filterSectionLabel}>Цена, ₸</Text>
+                                <View style={styles.priceRangeRow}>
+                                    <TextInput
+                                        style={styles.priceInput}
+                                        placeholder="От"
+                                        placeholderTextColor={colors.placeholder}
+                                        value={draftMinPrice}
+                                        onChangeText={setDraftMinPrice}
+                                        keyboardType="numeric"
+                                    />
+                                    <Text style={styles.priceRangeDash}>—</Text>
+                                    <TextInput
+                                        style={styles.priceInput}
+                                        placeholder="До"
+                                        placeholderTextColor={colors.placeholder}
+                                        value={draftMaxPrice}
+                                        onChangeText={setDraftMaxPrice}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+
+                                <Text style={styles.filterSectionLabel}>Сортировка</Text>
+                                {[
+                                    { key: 'newest', label: 'Сначала новые' },
+                                    { key: 'price_asc', label: 'Сначала дешевле' },
+                                    { key: 'price_desc', label: 'Сначала дороже' },
+                                ].map((opt) => {
+                                    const active = draftSortBy === opt.key;
+                                    return (
+                                        <TouchableOpacity
+                                            key={opt.key}
+                                            style={styles.sortOptionRow}
+                                            onPress={() => setDraftSortBy(opt.key)}
+                                        >
+                                            <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
+                                                {active && <View style={styles.radioInner} />}
+                                            </View>
+                                            <Text style={styles.sortOptionText}>{opt.label}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+
+                            <Button
+                                label="Показать товары"
+                                onPress={applyFilters}
+                                style={{ marginTop: spacing.md }}
+                            />
+                            <Button
+                                label="Сбросить фильтры"
+                                onPress={resetFilters}
+                                variant="ghost"
+                                style={{ marginTop: spacing.sm }}
+                            />
+                        </ScrollView>
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
@@ -941,7 +1139,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.primary + '30',
+        position: 'relative',
     },
+    filterBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: colors.danger,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    filterBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
     // Lists
     list: { padding: spacing.lg, paddingBottom: 40 },
@@ -1161,6 +1373,80 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
+    filterHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+    },
+    filterSectionLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: colors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: spacing.lg,
+        marginBottom: spacing.sm,
+    },
+    categoryChipsWrap: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: spacing.sm,
+    },
+    categoryChip: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.full,
+        backgroundColor: colors.background,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    categoryChipActive: {
+        backgroundColor: colors.primaryLight,
+        borderColor: colors.primary,
+    },
+    categoryChipText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+    categoryChipTextActive: { color: colors.primary, fontWeight: '700' },
+    priceRangeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    priceInput: {
+        flex: 1,
+        height: 44,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: spacing.md,
+        fontSize: 14,
+        color: colors.text,
+        backgroundColor: colors.background,
+    },
+    priceRangeDash: { color: colors.textTertiary },
+    sortOptionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.sm,
+    },
+    radioOuter: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    radioOuterActive: { borderColor: colors.primary },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: colors.primary,
+    },
+    sortOptionText: { fontSize: 14, color: colors.text },
     modalSupplierRow: {
         flexDirection: 'row',
         alignItems: 'center',

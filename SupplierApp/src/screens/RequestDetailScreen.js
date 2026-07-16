@@ -1,3 +1,4 @@
+// src/screens/RequestDetailScreen.js
 import React, { useState } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
@@ -126,7 +127,14 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                 <View style={styles.section}>
                     <SectionTitle label="Поставщик" />
                     <View style={styles.infoRow}>
-                        <Icon name="building" size={16} color={colors.textTertiary} />
+                        {request.supplier_profile_picture ? (
+                            <Image
+                                source={{ uri: request.supplier_profile_picture }}
+                                style={styles.rowAvatar}
+                            />
+                        ) : (
+                            <Icon name="building" size={16} color={colors.textTertiary} />
+                        )}
                         <Text style={styles.infoText}>{request.supplier_name || '—'}</Text>
                     </View>
                 </View>
@@ -179,7 +187,14 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                 <View style={styles.section}>
                     <SectionTitle label="Клиент" />
                     <View style={styles.infoRow}>
-                        <Icon name="user" size={16} color={colors.textTertiary} />
+                        {request.client_profile_picture ? (
+                            <Image
+                                source={{ uri: request.client_profile_picture }}
+                                style={styles.rowAvatar}
+                            />
+                        ) : (
+                            <Icon name="user" size={16} color={colors.textTertiary} />
+                        )}
                         <Text style={styles.infoText}>{request.client_name || '—'}</Text>
                     </View>
                     {request.client_company ? (
@@ -372,6 +387,7 @@ const styles = StyleSheet.create({
         gap: spacing.sm,
         paddingVertical: spacing.xs,
     },
+    rowAvatar: { width: 20, height: 20, borderRadius: 10 },
     infoText: { fontSize: 14, color: colors.text, flex: 1 },
     emptyText: { fontSize: 14, color: colors.textTertiary, textAlign: 'center', padding: spacing.md },
     itemRow: {

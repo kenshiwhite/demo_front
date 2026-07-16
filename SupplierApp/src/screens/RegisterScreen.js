@@ -1,7 +1,9 @@
+// src/screens/RegisterScreen.js
 import React, { useEffect, useState } from 'react';
 import { useCity } from '../context/CityContext';
 import Icon from '../components/Icon';
 import CitySelectScreen from './CitySelectScreen';
+import SupplierCitiesScreen from './SupplierCitiesScreen';
 import {
     View,
     Text,
@@ -20,6 +22,7 @@ import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme
 export default function RegisterScreen({ navigation }) {
     const { selectedCity, cityLabel, selectCity } = useCity();
     const [showCitySelect, setShowCitySelect] = useState(false);
+    const [showCitiesSelect, setShowCitiesSelect] = useState(false);
 
     const [form, setForm] = useState({
         username: '',
@@ -29,6 +32,7 @@ export default function RegisterScreen({ navigation }) {
         company_name: '',
         phone: '',
         city: selectedCity || '',
+        service_cities: [],
     });
 
     // sync city from context into form
@@ -53,13 +57,27 @@ export default function RegisterScreen({ navigation }) {
             Alert.alert('Ошибка', 'Пароль должен быть не менее 8 символов');
             return;
         }
-        if (!form.city) {
+        if (form.role === 'supplier') {
+            if (!form.service_cities || form.service_cities.length === 0) {
+                Alert.alert('Ошибка', 'Выберите хотя бы один город доставки');
+                return;
+            }
+        } else if (!form.city) {
             Alert.alert('Ошибка', 'Выберите город');
             return;
         }
         setLoading(true);
         try {
-            await register(form); // form already contains city
+            const payload = { ...form };
+            if (form.role === 'supplier') {
+                // Primary/HQ city defaults to the first covered city so the
+                // rest of the app (single-city displays, sorting) still has
+                // something sensible to show.
+                payload.city = form.service_cities[0];
+            } else {
+                delete payload.service_cities;
+            }
+            await register(payload);
             Alert.alert('Успешно', 'Аккаунт создан! Войдите в систему.', [
                 { text: 'OK', onPress: () => navigation.navigate('Login') }
             ]);
@@ -69,6 +87,7 @@ export default function RegisterScreen({ navigation }) {
             if (msg?.username) errorText = 'Это имя пользователя уже занято.';
             else if (msg?.email) errorText = 'Этот email уже используется.';
             else if (msg?.phone) errorText = Array.isArray(msg.phone) ? msg.phone[0] : msg.phone;
+            else if (msg?.service_cities) errorText = Array.isArray(msg.service_cities) ? msg.service_cities[0] : msg.service_cities;
             Alert.alert('Ошибка', errorText);
         } finally {
             setLoading(false);
@@ -167,17 +186,40 @@ export default function RegisterScreen({ navigation }) {
                         placeholder="+7 (___) ___-__-__"
                         keyboardType="phone-pad"
                     />
-                    <TouchableOpacity
-                        style={styles.cityPickerBtn}
-                        onPress={() => setShowCitySelect(true)}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="map_pin" size={16} color={cityLabel ? colors.primary : colors.textTertiary} />
-                        <Text style={[styles.cityPickerText, !cityLabel && { color: colors.placeholder }]}>
-                            {cityLabel || 'Выберите город'}
-                        </Text>
-                        <Icon name="chevronRight" size={14} color={colors.textTertiary} />
-                    </TouchableOpacity>
+                    {form.role === 'supplier' ? (
+                        <TouchableOpacity
+                            style={styles.cityPickerBtn}
+                            onPress={() => setShowCitiesSelect(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Icon
+                                name="map_pin"
+                                size={16}
+                                color={form.service_cities.length > 0 ? colors.primary : colors.textTertiary}
+                            />
+                            <Text
+                                style={[styles.cityPickerText, form.service_cities.length === 0 && { color: colors.placeholder }]}
+                                numberOfLines={1}
+                            >
+                                {form.service_cities.length > 0
+                                    ? `Городов доставки: ${form.service_cities.length}`
+                                    : 'Выберите города доставки'}
+                            </Text>
+                            <Icon name="chevronRight" size={14} color={colors.textTertiary} />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.cityPickerBtn}
+                            onPress={() => setShowCitySelect(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Icon name="map_pin" size={16} color={cityLabel ? colors.primary : colors.textTertiary} />
+                            <Text style={[styles.cityPickerText, !cityLabel && { color: colors.placeholder }]}>
+                                {cityLabel || 'Выберите город'}
+                            </Text>
+                            <Icon name="chevronRight" size={14} color={colors.textTertiary} />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <Button
@@ -186,18 +228,6 @@ export default function RegisterScreen({ navigation }) {
                     loading={loading}
                     style={{ marginTop: spacing.xl }}
                 />
-
-                {/* {showCitySelect && (
-                    <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                        <CitySelectScreen
-                            onClose={() => setShowCitySelect(false)}
-                            onSelect={(city) => {
-                                setForm(p => ({ ...p, city: city.value }));
-                                setShowCitySelect(false);
-                            }}
-                        />
-                    </View>
-                )} */}
 
                 <TouchableOpacity
                     style={styles.loginLink}
@@ -224,6 +254,22 @@ export default function RegisterScreen({ navigation }) {
                             city: city.value,
                         }));
                         setShowCitySelect(false);
+                    }}
+                />
+            </Modal>
+
+            <Modal
+                visible={showCitiesSelect}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setShowCitiesSelect(false)}
+            >
+                <SupplierCitiesScreen
+                    localOnly
+                    initialSelected={form.service_cities}
+                    onClose={() => setShowCitiesSelect(false)}
+                    onSaved={(service_cities) => {
+                        setForm((p) => ({ ...p, service_cities }));
                     }}
                 />
             </Modal>

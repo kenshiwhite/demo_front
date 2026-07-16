@@ -1,6 +1,7 @@
+// src/screens/BusinessDirectoryScreen.js
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
+    Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
     StyleSheet, Text, TouchableOpacity, View
 } from 'react-native';
 import client from '../api/client';
@@ -150,7 +151,11 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
             activeOpacity={0.75}
         >
             <View style={styles.cardHeader}>
-                <View style={[styles.avatar, { backgroundColor: '#EDE9FE' }]}><Icon name="user" size={18} color={colors.purple} /></View>
+                {item.profile_picture ? (
+                    <Image source={{ uri: item.profile_picture }} style={styles.avatar} />
+                ) : (
+                    <View style={[styles.avatar, { backgroundColor: '#EDE9FE' }]}><Icon name="user" size={18} color={colors.purple} /></View>
+                )}
                 <View style={{ flex: 1 }}><Text style={styles.name}>{item.username}</Text><Text style={styles.muted}>{item.phone}</Text></View>
                 <Icon name="chevronRight" size={18} color={colors.textTertiary} />
             </View>
@@ -210,9 +215,18 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
             <View style={styles.overlay}>
                 <ScrollView style={styles.modal}>
                     <View style={styles.modalHeader}>
-                        <View>
-                            <Text style={styles.modalTitle}>{selectedWorker?.username}</Text>
-                            <Text style={styles.muted}>{selectedWorker?.phone || 'Телефон не указан'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                            {selectedWorker?.profile_picture ? (
+                                <Image source={{ uri: selectedWorker.profile_picture }} style={styles.smallAvatar} />
+                            ) : (
+                                <View style={[styles.smallAvatar, { backgroundColor: '#EDE9FE' }]}>
+                                    <Icon name="user" size={16} color={colors.purple} />
+                                </View>
+                            )}
+                            <View>
+                                <Text style={styles.modalTitle}>{selectedWorker?.username}</Text>
+                                <Text style={styles.muted}>{selectedWorker?.phone || 'Телефон не указан'}</Text>
+                            </View>
                         </View>
                         <TouchableOpacity onPress={() => setSelectedWorker(null)} hitSlop={10}>
                             <Icon name="x" size={22} color={colors.textSecondary} />

@@ -1,3 +1,4 @@
+// src/screens/ProductDetailScreen.js
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
@@ -62,11 +63,18 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
                         onPress={() => onSupplierPress && onSupplierPress(product.supplier)}
                         activeOpacity={0.7}
                     >
-                        <View style={styles.supplierAvatar}>
-                            <Text style={styles.supplierAvatarText}>
-                                {product.supplier_name?.[0]?.toUpperCase()}
-                            </Text>
-                        </View>
+                        {product.supplier_profile_picture ? (
+                            <Image
+                                source={{ uri: product.supplier_profile_picture }}
+                                style={styles.supplierAvatar}
+                            />
+                        ) : (
+                            <View style={styles.supplierAvatar}>
+                                <Text style={styles.supplierAvatarText}>
+                                    {product.supplier_name?.[0]?.toUpperCase()}
+                                </Text>
+                            </View>
+                        )}
                         <View style={{ flex: 1 }}>
                             <Text style={styles.supplierLabel}>Поставщик</Text>
                             <Text style={styles.supplierName}>{product.supplier_name}</Text>

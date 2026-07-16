@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../components/Icon';
 import { useCity } from '../context/CityContext';
 import CitySelectScreen from './CitySelectScreen';
+import SupplierCitiesScreen from './SupplierCitiesScreen';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Alert, Modal, Image,
@@ -23,6 +24,8 @@ export default function ProfileScreen({ onClose }) {
         // inside component:
     const { selectedCity, cityLabel, selectCity } = useCity();
     const [showCitySelect, setShowCitySelect] = useState(false);
+    const [showCitiesSelect, setShowCitiesSelect] = useState(false);
+    const [serviceCitiesDisplay, setServiceCitiesDisplay] = useState(user?.service_cities_display || []);
     const [form, setForm] = useState({
         company_name: user?.company_name || '',
         phone: user?.phone || '',
@@ -325,6 +328,26 @@ export default function ProfileScreen({ onClose }) {
                             </View>
                         )}
                     </View>
+                    {user?.role === 'supplier' && (
+                        <>
+                            <Divider />
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Города доставки</Text>
+                                <TouchableOpacity
+                                    style={styles.cityPickerBtn}
+                                    onPress={() => setShowCitiesSelect(true)}
+                                >
+                                    <Icon name="map_pin" size={14} color={colors.primary} />
+                                    <Text style={styles.cityPickerBtnText} numberOfLines={1}>
+                                        {serviceCitiesDisplay.length > 0
+                                            ? serviceCitiesDisplay.join(', ')
+                                            : 'Выберите города'}
+                                    </Text>
+                                    <Icon name="chevronRight" size={14} color={colors.textTertiary} />
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
                     <Divider />
                     <View style={styles.field}>
                         <Text style={styles.fieldLabel}>О компании</Text>
@@ -505,6 +528,20 @@ export default function ProfileScreen({ onClose }) {
                     <CitySelectScreen
                         onClose={() => setShowCitySelect(false)}
                         onSelect={() => setShowCitySelect(false)}
+                    />
+                </View>
+            )}
+
+            {showCitiesSelect && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
+                    <SupplierCitiesScreen
+                        initialSelected={user?.service_cities || []}
+                        onClose={() => setShowCitiesSelect(false)}
+                        onSaved={async () => {
+                            const updatedUser = await client.get('/api/auth/me/');
+                            await signIn(updatedUser.data);
+                            setServiceCitiesDisplay(updatedUser.data.service_cities_display || []);
+                        }}
                     />
                 </View>
             )}
