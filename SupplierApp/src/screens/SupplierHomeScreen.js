@@ -31,6 +31,7 @@ export default function SupplierHomeScreen() {
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { signOut, user } = useAuth();
     const [view, setView] = useState('home');
+    const [requestsSubTab, setRequestsSubTab] = useState('list'); // 'list' | 'clients' — sales_rep only
     const [requests, setRequests] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -535,14 +536,16 @@ export default function SupplierHomeScreen() {
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        style={styles.headerBusinessBtn}
-                        onPress={() => setView('business')}
-                        activeOpacity={0.8}
-                        accessibilityLabel="Клиенты и сотрудники"
-                    >
-                        <Icon name="team" size={20} color="#fff" />
-                    </TouchableOpacity>
+                    {user?.role === 'supplier' && (
+                        <TouchableOpacity
+                            style={styles.headerBusinessBtn}
+                            onPress={() => setView('business')}
+                            activeOpacity={0.8}
+                            accessibilityLabel="Клиенты и сотрудники"
+                        >
+                            <Icon name="team" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    )}
                     {user?.role === 'supplier' && <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAnalytics(true)}>
                         <Icon name="bar_chart" size={20} color="#fff" />
                     </TouchableOpacity>}
@@ -590,8 +593,32 @@ export default function SupplierHomeScreen() {
                 </TouchableOpacity>
             </View>
 
+            {/* For sales reps, the Requests tab hosts two sub-tabs: the request
+                list, and their own clients (replacing the separate directory
+                access suppliers get via the header team button). */}
+            {view === 'requests' && user?.role === 'sales_rep' && (
+                <View style={styles.subTabBar}>
+                    <TouchableOpacity
+                        style={[styles.subTab, requestsSubTab === 'list' && styles.subTabActive]}
+                        onPress={() => setRequestsSubTab('list')}
+                    >
+                        <Text style={[styles.subTabText, requestsSubTab === 'list' && styles.subTabTextActive]}>
+                            Заявки
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.subTab, requestsSubTab === 'clients' && styles.subTabActive]}
+                        onPress={() => setRequestsSubTab('clients')}
+                    >
+                        <Text style={[styles.subTabText, requestsSubTab === 'clients' && styles.subTabTextActive]}>
+                            Клиенты
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {/* Request filter */}
-            {view === 'requests' && (
+            {view === 'requests' && (user?.role !== 'sales_rep' || requestsSubTab === 'list') && (
                 <View style={styles.filterBar}>
                     {[
                         { key: 'active', label: 'Активные' },
@@ -611,9 +638,11 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
-            <CrossFade activeKey={loading ? 'loading' : view} style={{ flex: 1 }}>
+            <CrossFade activeKey={loading ? 'loading' : `${view}-${requestsSubTab}`} style={{ flex: 1 }}>
             {view === 'business' ? (
                 <BusinessDirectoryScreen isSupplier={user?.role === 'supplier'} />
+            ) : view === 'requests' && user?.role === 'sales_rep' && requestsSubTab === 'clients' ? (
+                <BusinessDirectoryScreen isSupplier={false} />
             ) : view === 'home' ? (
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
@@ -1063,6 +1092,22 @@ const createStyles = (colors) => StyleSheet.create({
     },
     tabText: { fontSize: 14, color: colors.textTertiary, fontWeight: '500' },
     tabTextActive: { color: colors.primary, fontWeight: '700' },
+    subTabBar: {
+        flexDirection: 'row',
+        backgroundColor: colors.card,
+        paddingHorizontal: spacing.md,
+        paddingTop: spacing.sm,
+        gap: spacing.sm,
+    },
+    subTab: {
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.full,
+        backgroundColor: colors.background,
+    },
+    subTabActive: { backgroundColor: colors.primaryLight },
+    subTabText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+    subTabTextActive: { color: colors.primary },
     filterBar: {
         flexDirection: 'row',
         backgroundColor: colors.card,

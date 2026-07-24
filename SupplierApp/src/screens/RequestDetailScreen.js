@@ -1,3 +1,4 @@
+// SupplierApp/src/screens/RequestDetailScreen.js
 import React, { useState, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
@@ -27,6 +28,43 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
         desired_delivery_date: request.desired_delivery_date || '',
         contact_phone: request.contact_phone || '',
     });
+
+    const isSupplierOwner = user.role === 'supplier';
+    const canAssignRep = isSupplierOwner && !request.sales_rep;
+    const [workers, setWorkers] = useState([]);
+    const [workersLoaded, setWorkersLoaded] = useState(false);
+    const [showAssignPicker, setShowAssignPicker] = useState(false);
+    const [assigning, setAssigning] = useState(false);
+
+    const loadWorkers = async () => {
+        if (workersLoaded) return;
+        try {
+            const res = await client.get('/api/auth/workers/');
+            setWorkers(res.data.results || res.data);
+            setWorkersLoaded(true);
+        } catch (e) {
+            Alert.alert('Ошибка', 'Не удалось загрузить список сотрудников');
+        }
+    };
+
+    const openAssignPicker = () => {
+        loadWorkers();
+        setShowAssignPicker(true);
+    };
+
+    const handleAssignRep = async (worker) => {
+        setAssigning(true);
+        try {
+            await client.post(`/api/requests/${request.id}/assign_rep/`, { sales_rep_id: worker.id });
+            setShowAssignPicker(false);
+            Alert.alert('Готово', `Заявка назначена сотруднику ${worker.username}`);
+            onUpdate();
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось назначить сотрудника');
+        } finally {
+            setAssigning(false);
+        }
+    };
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -140,6 +178,53 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                         <Text style={styles.infoText}>{request.supplier_name || '—'}</Text>
                     </View>
                 </View>
+
+                {/* Assigned sales rep */}
+                {(request.sales_rep_name || canAssignRep) && (
+                    <View style={styles.section}>
+                        <SectionTitle label="Ответственный сотрудник" />
+                        {request.sales_rep_name ? (
+                            <View style={styles.infoRow}>
+                                <Icon name="user" size={16} color={colors.textTertiary} />
+                                <Text style={styles.infoText}>{request.sales_rep_name}</Text>
+                            </View>
+                        ) : canAssignRep ? (
+                            showAssignPicker ? (
+                                <View>
+                                    {workers.length === 0 ? (
+                                        <Text style={styles.emptyText}>
+                                            {workersLoaded ? 'Нет доступных сотрудников' : 'Загрузка...'}
+                                        </Text>
+                                    ) : (
+                                        workers.map((w) => (
+                                            <TouchableOpacity
+                                                key={w.id}
+                                                style={styles.repOption}
+                                                onPress={() => handleAssignRep(w)}
+                                                disabled={assigning}
+                                            >
+                                                <Icon name="user" size={16} color={colors.primary} />
+                                                <Text style={styles.repOptionText}>{w.username}</Text>
+                                                {w.phone ? <Text style={styles.repOptionSub}>{w.phone}</Text> : null}
+                                            </TouchableOpacity>
+                                        ))
+                                    )}
+                                    <Button
+                                        label="Отмена"
+                                        onPress={() => setShowAssignPicker(false)}
+                                        variant="ghost"
+                                        style={{ marginTop: spacing.sm }}
+                                    />
+                                </View>
+                            ) : (
+                                <TouchableOpacity style={styles.assignRepBtn} onPress={openAssignPicker}>
+                                    <Icon name="plus" size={16} color={colors.primary} />
+                                    <Text style={styles.assignRepBtnText}>Назначить сотрудника</Text>
+                                </TouchableOpacity>
+                            )
+                        ) : null}
+                    </View>
+                )}
 
                 {/* Items */}
                 <View style={styles.section}>
@@ -452,4 +537,28 @@ const createStyles = (colors) => StyleSheet.create({
     },
     offeredPriceLabel: { fontSize: 13, color: colors.success },
     offeredPriceValue: { fontSize: 16, fontWeight: '700', color: colors.success },
+    assignRepBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        borderWidth: 1.5,
+        borderColor: colors.primary,
+        borderStyle: 'dashed',
+    },
+    assignRepBtnText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+    repOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.sm,
+        borderRadius: radius.md,
+        marginBottom: spacing.xs,
+        backgroundColor: colors.background,
+    },
+    repOptionText: { fontSize: 14, fontWeight: '600', color: colors.text, flex: 1 },
+    repOptionSub: { fontSize: 12, color: colors.textTertiary },
 });

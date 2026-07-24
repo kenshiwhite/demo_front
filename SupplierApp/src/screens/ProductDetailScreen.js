@@ -1,4 +1,5 @@
-import React from 'react';
+// SupplierApp/src/screens/ProductDetailScreen.js
+import React, { useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Image, Dimensions
