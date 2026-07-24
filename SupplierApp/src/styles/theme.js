@@ -2,7 +2,7 @@ import { Dimensions, Platform } from 'react-native';
 
 export const screen = Dimensions.get('window');
 
-export const colors = {
+export const lightColors = {
     primary: '#4F46E5',
     primaryDark: '#3730A3',
     primaryLight: '#EEF2FF',
@@ -20,6 +20,30 @@ export const colors = {
     textTertiary: '#9CA3AF',
     placeholder: '#9CA3AF',
 };
+
+export const darkColors = {
+    primary: '#6366F1',
+    primaryDark: '#818CF8',
+    primaryLight: '#1E1B4B',
+    success: '#34D399',
+    warning: '#FBBF24',
+    danger: '#F87171',
+    purple: '#818CF8',
+    white: '#FFFFFF',
+    background: '#0B0F19',
+    card: '#161B29',
+    border: '#2A3040',
+    borderLight: '#1F2534',
+    text: '#F3F4F6',
+    textSecondary: '#9CA3AF',
+    textTertiary: '#6B7280',
+    placeholder: '#6B7280',
+};
+
+// Default/static export. Screens that haven't been converted to
+// `useTheme()` yet keep importing this and render in light mode; screens
+// that call `useTheme()` get whichever palette the user picked in Settings.
+export const colors = lightColors;
 
 export const typography = {
     h1: { fontSize: 24, fontWeight: '700', color: colors.text },

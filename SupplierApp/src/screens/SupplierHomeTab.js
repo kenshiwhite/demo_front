@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import {
     View, Text, ScrollView, TouchableOpacity,
@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import client from '../api/client';
-import { colors, spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import RequestDetailScreen from './RequestDetailScreen';
 
@@ -20,6 +21,8 @@ LocaleConfig.locales['ru'] = {
 LocaleConfig.defaultLocale = 'ru';
 
 export default function SupplierHomeTab({ onRequestPress }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [products, setProducts] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -383,7 +386,7 @@ export default function SupplierHomeTab({ onRequestPress }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
     loadingText: { fontSize: 14, color: colors.textSecondary },

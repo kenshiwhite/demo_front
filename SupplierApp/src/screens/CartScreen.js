@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, Alert, TextInput, ScrollView,
@@ -9,12 +9,15 @@ import {
 import { useCart } from '../context/CartContext';
 import client from '../api/client';
 import { InputField, Button } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import { OpenAddressInMap } from '../components/AddressMap';
 import ProductDetailScreen from './ProductDetailScreen';
 
 export default function CartScreen({ onClose }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const { cart, removeFromCart, updateQuantity, clearSupplierCart } = useCart();
     const [selectedSupplier, setSelectedSupplier] = useState(null);
     const [checkoutModal, setCheckoutModal] = useState(false);
@@ -319,7 +322,7 @@ export default function CartScreen({ onClose }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
 import { CityProvider, useCity } from './src/context/CityContext';
+import { ThemeProvider } from './src/context/ThemeContext';
+import { LanguageProvider } from './src/context/LanguageContext';
 import { ActivityIndicator, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -116,16 +118,20 @@ const Navigation = () => {
 
 export default function App() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-                <CityProvider>
-                    <CartProvider>
-                        <NavigationContainer>
-                            <Navigation />
-                        </NavigationContainer>
-                    </CartProvider>
-                </CityProvider>
-            </AuthProvider>
-        </QueryClientProvider>
+        <ThemeProvider>
+            <LanguageProvider>
+                <QueryClientProvider client={queryClient}>
+                    <AuthProvider>
+                        <CityProvider>
+                            <CartProvider>
+                                <NavigationContainer>
+                                    <Navigation />
+                                </NavigationContainer>
+                            </CartProvider>
+                        </CityProvider>
+                    </AuthProvider>
+                </QueryClientProvider>
+            </LanguageProvider>
+        </ThemeProvider>
     );
 }

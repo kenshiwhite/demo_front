@@ -1,5 +1,4 @@
-// src/screens/RegisterScreen.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useCity } from '../context/CityContext';
 import Icon from '../components/Icon';
 import CitySelectScreen from './CitySelectScreen';
@@ -17,9 +16,12 @@ import {
 } from 'react-native';
 import { register } from '../api/auth';
 import { InputField, Button } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function RegisterScreen({ navigation }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const { selectedCity, cityLabel, selectCity } = useCity();
     const [showCitySelect, setShowCitySelect] = useState(false);
     const [showCitiesSelect, setShowCitiesSelect] = useState(false);
@@ -229,6 +231,18 @@ export default function RegisterScreen({ navigation }) {
                     style={{ marginTop: spacing.xl }}
                 />
 
+                {/* {showCitySelect && (
+                    <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
+                        <CitySelectScreen
+                            onClose={() => setShowCitySelect(false)}
+                            onSelect={(city) => {
+                                setForm(p => ({ ...p, city: city.value }));
+                                setShowCitySelect(false);
+                            }}
+                        />
+                    </View>
+                )} */}
+
                 <TouchableOpacity
                     style={styles.loginLink}
                     onPress={() => navigation.navigate('Login')}
@@ -277,7 +291,7 @@ export default function RegisterScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     scroll: {
         flexGrow: 1,

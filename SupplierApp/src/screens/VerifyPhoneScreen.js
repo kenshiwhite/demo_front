@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
     Alert, KeyboardAvoidingView, Platform, ScrollView
@@ -6,9 +6,12 @@ import {
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { InputField, Button } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function VerifyPhoneScreen() {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const { user, signIn, signOut } = useAuth();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
@@ -118,7 +121,7 @@ export default function VerifyPhoneScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     topRow: {
         flexDirection: 'row',

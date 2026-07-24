@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import CitySelectScreen from "../screens/CitySelectScreen"
 import { useCity } from '../context/CityContext';
 import {
@@ -17,14 +17,18 @@ import RequestDetailScreen from './RequestDetailScreen';
 import ProfileScreen from './ProfileScreen';
 import AnalyticsScreen from './AnalyticsScreen';
 import { InputField, Button, SectionTitle } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import CalendarScreen from './CalendarScreen';
 import BusinessDirectoryScreen from './BusinessDirectoryScreen';
+import { ScreenOverlay, CrossFade } from '../components/AnimatedPrimitives';
 
 
 export default function SupplierHomeScreen() {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const { signOut, user } = useAuth();
     const [view, setView] = useState('home');
     const [requests, setRequests] = useState([]);
@@ -607,6 +611,7 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
+            <CrossFade activeKey={loading ? 'loading' : view} style={{ flex: 1 }}>
             {view === 'business' ? (
                 <BusinessDirectoryScreen isSupplier={user?.role === 'supplier'} />
             ) : view === 'home' ? (
@@ -649,6 +654,7 @@ export default function SupplierHomeScreen() {
                     }
                 />
             )}
+            </CrossFade>
 
             {/* FAB */}
             {view === 'products' && user?.role === 'supplier' && (
@@ -949,68 +955,54 @@ export default function SupplierHomeScreen() {
             </Modal>
 
 
-            {calendarSelectedRequest && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <RequestDetailScreen
-                        request={calendarSelectedRequest}
-                        onClose={() => setCalendarSelectedRequest(null)}
-                        onUpdate={() => {
-                            setCalendarSelectedRequest(null);
-                            loadRequests();
-                        }}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={!!calendarSelectedRequest}>
+                <RequestDetailScreen
+                    request={calendarSelectedRequest}
+                    onClose={() => setCalendarSelectedRequest(null)}
+                    onUpdate={() => {
+                        setCalendarSelectedRequest(null);
+                        loadRequests();
+                    }}
+                />
+            </ScreenOverlay>
 
-            {showCalendar && (
-                    <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                        <CalendarScreen
-                            onClose={() => setShowCalendar(false)}
-                            userRole="supplier"
-                        />
-                    </View>
-                )}
+            <ScreenOverlay visible={showCalendar}>
+                <CalendarScreen
+                    onClose={() => setShowCalendar(false)}
+                    userRole="supplier"
+                />
+            </ScreenOverlay>
 
-            {selectedRequestDetail && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <RequestDetailScreen
-                        request={selectedRequestDetail}
-                        onClose={() => setSelectedRequestDetail(null)}
-                        onUpdate={() => { loadRequests(); setSelectedRequestDetail(null); }}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={!!selectedRequestDetail}>
+                <RequestDetailScreen
+                    request={selectedRequestDetail}
+                    onClose={() => setSelectedRequestDetail(null)}
+                    onUpdate={() => { loadRequests(); setSelectedRequestDetail(null); }}
+                />
+            </ScreenOverlay>
 
-            {showNotifications && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <NotificationsScreen onClose={() => { setShowNotifications(false); loadUnreadCount(); }} />
-                </View>
-            )}
+            <ScreenOverlay visible={showNotifications}>
+                <NotificationsScreen onClose={() => { setShowNotifications(false); loadUnreadCount(); }} />
+            </ScreenOverlay>
 
-            {showProfile && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <ProfileScreen onClose={() => setShowProfile(false)} />
-                </View>
-            )}
+            <ScreenOverlay visible={showProfile}>
+                <ProfileScreen onClose={() => setShowProfile(false)} />
+            </ScreenOverlay>
 
-            {showAnalytics && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <AnalyticsScreen onClose={() => setShowAnalytics(false)} />
-                </View>
-            )}
+            <ScreenOverlay visible={showAnalytics}>
+                <AnalyticsScreen onClose={() => setShowAnalytics(false)} />
+            </ScreenOverlay>
 
-            {showCitySelect && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <CitySelectScreen
-                        onClose={() => setShowCitySelect(false)}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={showCitySelect}>
+                <CitySelectScreen
+                    onClose={() => setShowCitySelect(false)}
+                />
+            </ScreenOverlay>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

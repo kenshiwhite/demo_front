@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon';
 import { useCity } from '../context/CityContext';
 import CitySelectScreen from './CitySelectScreen';
 import SupplierCitiesScreen from './SupplierCitiesScreen';
+import { ScreenOverlay } from '../components/AnimatedPrimitives';
+import SettingsScreen from './SettingsScreen';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Alert, Modal, Image,
@@ -12,15 +14,21 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { InputField, Button, Card, SectionTitle, Divider } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 
 export default function ProfileScreen({ onClose }) {
     const { user, signIn, signOut } = useAuth();
+    const { colors } = useTheme();
+    const { t } = useLanguage();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [editing, setEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [passwordModal, setPasswordModal] = useState(false);
     const [emailModal, setEmailModal] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
         // inside component:
     const { selectedCity, cityLabel, selectCity } = useCity();
     const [showCitySelect, setShowCitySelect] = useState(false);
@@ -169,31 +177,6 @@ export default function ProfileScreen({ onClose }) {
                             await refreshUser();
                         } catch (e) {
                             Alert.alert('Ошибка', 'Не удалось удалить фото профиля');
-                        } finally {
-                            setLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleDeleteAccount = () => {
-        Alert.alert(
-            'Удалить аккаунт',
-            'Аккаунт будет удален навсегда. Это действие нельзя отменить.',
-            [
-                { text: 'Отмена', style: 'cancel' },
-                {
-                    text: 'Удалить',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setLoading(true);
-                        try {
-                            await client.delete('/api/auth/account/');
-                            await signOut();
-                        } catch (e) {
-                            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось удалить аккаунт');
                         } finally {
                             setLoading(false);
                         }
@@ -440,8 +423,10 @@ export default function ProfileScreen({ onClose }) {
                     <Text style={styles.logoutText}>Выйти из аккаунта</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} disabled={loading}>
-                    <Text style={styles.deleteAccountText}>Удалить аккаунт</Text>
+                <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowSettings(true)}>
+                    <Icon name="info" size={16} color={colors.textSecondary} />
+                    <Text style={styles.settingsText}>{t('profile.settings')}</Text>
+                    <Icon name="chevronRight" size={16} color={colors.textTertiary} />
                 </TouchableOpacity>
 
                 <View style={{ height: 40 }} />
@@ -523,33 +508,33 @@ export default function ProfileScreen({ onClose }) {
                 </TouchableWithoutFeedback>
             </Modal>
 
-            {showCitySelect && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
-                    <CitySelectScreen
-                        onClose={() => setShowCitySelect(false)}
-                        onSelect={() => setShowCitySelect(false)}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={showCitySelect} zIndex={9999}>
+                <CitySelectScreen
+                    onClose={() => setShowCitySelect(false)}
+                    onSelect={() => setShowCitySelect(false)}
+                />
+            </ScreenOverlay>
 
-            {showCitiesSelect && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
-                    <SupplierCitiesScreen
-                        initialSelected={user?.service_cities || []}
-                        onClose={() => setShowCitiesSelect(false)}
-                        onSaved={async () => {
-                            const updatedUser = await client.get('/api/auth/me/');
-                            await signIn(updatedUser.data);
-                            setServiceCitiesDisplay(updatedUser.data.service_cities_display || []);
-                        }}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={showCitiesSelect} zIndex={9999}>
+                <SupplierCitiesScreen
+                    initialSelected={user?.service_cities || []}
+                    onClose={() => setShowCitiesSelect(false)}
+                    onSaved={async () => {
+                        const updatedUser = await client.get('/api/auth/me/');
+                        await signIn(updatedUser.data);
+                        setServiceCitiesDisplay(updatedUser.data.service_cities_display || []);
+                    }}
+                />
+            </ScreenOverlay>
+
+            <ScreenOverlay visible={showSettings} zIndex={9999}>
+                <SettingsScreen onClose={() => setShowSettings(false)} />
+            </ScreenOverlay>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
@@ -665,17 +650,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     logoutText: { color: colors.danger, fontWeight: '600', fontSize: 16 },
-    deleteAccountBtn: {
+    settingsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
         marginHorizontal: spacing.lg,
         marginBottom: spacing.md,
         padding: spacing.lg,
         backgroundColor: colors.card,
         borderRadius: radius.lg,
-        alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#FCA5A5',
+        borderColor: colors.border,
     },
-    deleteAccountText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
+    settingsText: { flex: 1, color: colors.text, fontWeight: '600', fontSize: 15 },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',

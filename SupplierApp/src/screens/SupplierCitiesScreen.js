@@ -1,11 +1,11 @@
-// src/screens/SupplierCitiesScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
     FlatList, TextInput, ActivityIndicator, Alert
 } from 'react-native';
 import client from '../api/client';
-import { colors, spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 // Multi-select variant of CitySelectScreen: lets a supplier pick every city
@@ -13,6 +13,8 @@ import Icon from '../components/Icon';
 // `service_cities` on the user profile (separate from the single `city`
 // field, which stays as the supplier's primary/HQ city).
 export default function SupplierCitiesScreen({ initialSelected = [], onClose, onSaved, localOnly = false }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [cities, setCities] = useState([]);
     const [filtered, setFiltered] = useState([]);
     const [search, setSearch] = useState('');
@@ -173,7 +175,7 @@ export default function SupplierCitiesScreen({ initialSelected = [], onClose, on
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

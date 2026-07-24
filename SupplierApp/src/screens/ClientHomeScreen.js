@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCity } from '../context/CityContext';
 import CitySelectScreen from './CitySelectScreen';
 import {
@@ -18,14 +18,18 @@ import CartScreen from './CartScreen';
 import ProfileScreen from './ProfileScreen';
 import ProductDetailScreen from './ProductDetailScreen';
 import { InputField, Button } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import client from '../api/client';
+import { ScreenOverlay, CrossFade } from '../components/AnimatedPrimitives';
 
 const screenWidth = Dimensions.get('window').width;
 const cardWidth = (screenWidth - 48) / 2;
 
 export default function ClientHomeScreen() {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const { signOut, user } = useAuth();
     const { addToCart, getTotalItems } = useCart();
     const [view, setView] = useState('all');
@@ -626,6 +630,7 @@ export default function ClientHomeScreen() {
             )}
 
             {/* Content */}
+            <CrossFade activeKey={loading ? 'loading' : `${view}-${displayMode}`} style={{ flex: 1 }}>
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
@@ -706,6 +711,7 @@ export default function ClientHomeScreen() {
                     }
                 />
             )}
+            </CrossFade>
 
             {/* Quantity Modal */}
             <Modal visible={quantityModal} transparent animationType="slide">
@@ -808,7 +814,7 @@ export default function ClientHomeScreen() {
             <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
                     <View style={styles.modalOverlay}>
-                        <ScrollView style={[styles.modalContent, { maxHeight: '85%' }]}>
+                        <View style={[styles.modalContent, { maxHeight: '85%' }]}>
                             <View style={styles.modalHandle} />
                             <View style={styles.filterHeaderRow}>
                                 <Text style={styles.modalTitle}>Фильтры</Text>
@@ -890,81 +896,69 @@ export default function ClientHomeScreen() {
                                 variant="ghost"
                                 style={{ marginTop: spacing.sm }}
                             />
-                        </ScrollView>
+                        </View>
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
 
             {/* Overlays */}
-            {selectedProduct && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <ProductDetailScreen
-                        product={selectedProduct}
-                        onClose={() => setSelectedProduct(null)}
-                        onAddToCart={(product) => {
-                            setSelectedProduct(null);
-                            handleAddToCart(product);
-                        }}
-                        onSupplierPress={(supplierId) => {
-                            setSelectedProduct(null);
-                            const supplier = suppliers.find(s => s.id === supplierId);
-                            if (supplier) {
-                                handleSupplierPress(supplier);
-                            } else {
-                                client.get(`/api/auth/suppliers/${supplierId}/`)
-                                    .then(res => handleSupplierPress(res.data))
-                                    .catch(() => {});
-                            }
-                        }}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={!!selectedProduct}>
+                <ProductDetailScreen
+                    product={selectedProduct}
+                    onClose={() => setSelectedProduct(null)}
+                    onAddToCart={(product) => {
+                        setSelectedProduct(null);
+                        handleAddToCart(product);
+                    }}
+                    onSupplierPress={(supplierId) => {
+                        setSelectedProduct(null);
+                        const supplier = suppliers.find(s => s.id === supplierId);
+                        if (supplier) {
+                            handleSupplierPress(supplier);
+                        } else {
+                            client.get(`/api/auth/suppliers/${supplierId}/`)
+                                .then(res => handleSupplierPress(res.data))
+                                .catch(() => {});
+                        }
+                    }}
+                />
+            </ScreenOverlay>
 
-            {showCart && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <CartScreen onClose={() => setShowCart(false)} />
-                </View>
-            )}
+            <ScreenOverlay visible={showCart}>
+                <CartScreen onClose={() => setShowCart(false)} />
+            </ScreenOverlay>
 
-            {selectedRequest && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <RequestDetailScreen
-                        request={selectedRequest}
-                        onClose={() => setSelectedRequest(null)}
-                        onUpdate={() => { loadMyRequests(); setSelectedRequest(null); }}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={!!selectedRequest}>
+                <RequestDetailScreen
+                    request={selectedRequest}
+                    onClose={() => setSelectedRequest(null)}
+                    onUpdate={() => { loadMyRequests(); setSelectedRequest(null); }}
+                />
+            </ScreenOverlay>
 
-            {showNotifications && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <NotificationsScreen onClose={() => setShowNotifications(false)} />
-                </View>
-            )}
+            <ScreenOverlay visible={showNotifications}>
+                <NotificationsScreen onClose={() => setShowNotifications(false)} />
+            </ScreenOverlay>
 
-            {showProfile && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <ProfileScreen onClose={() => setShowProfile(false)} />
-                </View>
-            )}
+            <ScreenOverlay visible={showProfile}>
+                <ProfileScreen onClose={() => setShowProfile(false)} />
+            </ScreenOverlay>
 
-            {showCitySelect && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
-                    <CitySelectScreen
-                        onClose={() => setShowCitySelect(false)}
-                        onSelect={() => {
-                            setShowCitySelect(false);
-                            loadAllProducts();
-                            loadSuppliers();
-                        }}
-                    />
-                </View>
-            )}
+            <ScreenOverlay visible={showCitySelect}>
+                <CitySelectScreen
+                    onClose={() => setShowCitySelect(false)}
+                    onSelect={() => {
+                        setShowCitySelect(false);
+                        loadAllProducts();
+                        loadSuppliers();
+                    }}
+                />
+            </ScreenOverlay>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
     // Header

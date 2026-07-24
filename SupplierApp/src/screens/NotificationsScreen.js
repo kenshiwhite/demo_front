@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity,
     StyleSheet, ActivityIndicator, Animated
 } from 'react-native';
 import client from '../api/client';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 export default function NotificationsScreen({ onClose }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -130,7 +133,7 @@ export default function NotificationsScreen({ onClose }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

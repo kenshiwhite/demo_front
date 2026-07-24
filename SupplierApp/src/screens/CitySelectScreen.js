@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
     FlatList, TextInput, ActivityIndicator
 } from 'react-native';
 import client from '../api/client';
 import { useCity } from '../context/CityContext';
-import { colors, spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 export default function CitySelectScreen({ onClose, onSelect }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [cities, setCities] = useState([]);
     const [filtered, setFiltered] = useState([]);
     const [search, setSearch] = useState('');
@@ -138,7 +141,7 @@ export default function CitySelectScreen({ onClose, onSelect }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

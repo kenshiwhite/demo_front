@@ -1,16 +1,18 @@
-// src/screens/ProductDetailScreen.js
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Image, Dimensions
 } from 'react-native';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import { Button } from '../components/UI';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function ProductDetailScreen({ product, onClose, onAddToCart, onSupplierPress }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -142,7 +144,7 @@ export default function ProductDetailScreen({ product, onClose, onAddToCart, onS
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
     ScrollView, KeyboardAvoidingView, Platform, Alert
@@ -7,9 +7,12 @@ import { login, requestPhoneLoginCode, verifyPhoneLoginCode } from '../api/auth'
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import { InputField, Button } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function LoginScreen({ navigation }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [phone, setPhone] = useState('');
@@ -199,7 +202,7 @@ export default function LoginScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     scroll: {
         flexGrow: 1,

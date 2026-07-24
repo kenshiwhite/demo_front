@@ -1,5 +1,4 @@
-// src/screens/RequestDetailScreen.js
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Alert, Image
@@ -7,11 +6,14 @@ import {
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { InputField, Button, SectionTitle, Divider } from '../components/UI';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import { OpenAddressInMap } from '../components/AddressMap';
 
 export default function RequestDetailScreen({ request, onClose, onUpdate }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const { user } = useAuth();
     const isClient = user.role === 'client';
     const isSupplierStaff = user.role === 'supplier' || user.role === 'sales_rep';
@@ -339,7 +341,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

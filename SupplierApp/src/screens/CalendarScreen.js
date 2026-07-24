@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, StyleSheet, ActivityIndicator,
     TouchableOpacity, ScrollView, Modal
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import client from '../api/client';
-import { colors, spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import RequestDetailScreen from './RequestDetailScreen';
 
@@ -26,6 +27,8 @@ LocaleConfig.locales['ru'] = {
 LocaleConfig.defaultLocale = 'ru';
 
 export default function CalendarScreen({ onClose, userRole }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(null);
@@ -421,7 +424,7 @@ export default function CalendarScreen({ onClose, userRole }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',

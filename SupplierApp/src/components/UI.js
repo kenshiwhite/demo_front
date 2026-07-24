@@ -1,27 +1,44 @@
-import React from 'react';
+// src/components/UI.js
+import React, { useMemo, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity,
-    StyleSheet, ActivityIndicator
+    StyleSheet, ActivityIndicator, Animated, Pressable
 } from 'react-native';
-import { colors, typography, spacing, radius, shadow, STATUS_TOP } from '../styles/theme';
+import { typography, spacing, radius, shadow, STATUS_TOP } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
+import { FadeIn } from './AnimatedPrimitives';
+
+// Shared by every component below: returns theme-aware styles + the raw
+// colors object (some components need colors.X inline, not just via styles).
+const useThemedStyles = () => {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+    return { styles, colors };
+};
 
 // Header
-export const Header = ({ title, left, right, style }) => (
-    <View style={[styles.header, style]}>
-        <View style={styles.headerSide}>{left}</View>
-        <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-        <View style={styles.headerSide}>{right}</View>
-    </View>
-);
+export const Header = ({ title, left, right, style }) => {
+    const { styles } = useThemedStyles();
+    return (
+        <View style={[styles.header, style]}>
+            <View style={styles.headerSide}>{left}</View>
+            <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+            <View style={styles.headerSide}>{right}</View>
+        </View>
+    );
+};
 
 // Back button
-export const BackButton = ({ onPress, label = '← Назад', light = true }) => (
-    <TouchableOpacity onPress={onPress} style={styles.backBtn}>
-        <Text style={[styles.backBtnText, { color: light ? '#fff' : colors.primary }]}>
-            {label}
-        </Text>
-    </TouchableOpacity>
-);
+export const BackButton = ({ onPress, label = '← Назад', light = true }) => {
+    const { styles, colors } = useThemedStyles();
+    return (
+        <TouchableOpacity onPress={onPress} style={styles.backBtn}>
+            <Text style={[styles.backBtnText, { color: light ? '#fff' : colors.primary }]}>
+                {label}
+            </Text>
+        </TouchableOpacity>
+    );
+};
 
 // Input field with always-visible label
 export const InputField = ({
@@ -29,92 +46,123 @@ export const InputField = ({
     secureTextEntry, keyboardType, multiline,
     numberOfLines, style, error, autoCapitalize,
     autoCorrect, editable = true
-}) => (
-    <View style={[styles.inputWrapper, style]}>
-        {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
-        <TextInput
-            style={[
-                styles.input,
-                multiline && { height: numberOfLines ? numberOfLines * 40 : 80, textAlignVertical: 'top' },
-                error && styles.inputError,
-                !editable && styles.inputDisabled,
-            ]}
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={placeholder}
-            placeholderTextColor={colors.placeholder}
-            secureTextEntry={secureTextEntry}
-            keyboardType={keyboardType}
-            multiline={multiline}
-            numberOfLines={numberOfLines}
-            autoCapitalize={autoCapitalize || 'none'}
-            autoCorrect={autoCorrect !== undefined ? autoCorrect : false}
-            editable={editable}
-        />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-);
+}) => {
+    const { styles, colors } = useThemedStyles();
+    return (
+        <View style={[styles.inputWrapper, style]}>
+            {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+            <TextInput
+                style={[
+                    styles.input,
+                    multiline && { height: numberOfLines ? numberOfLines * 40 : 80, textAlignVertical: 'top' },
+                    error && styles.inputError,
+                    !editable && styles.inputDisabled,
+                ]}
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+                placeholderTextColor={colors.placeholder}
+                secureTextEntry={secureTextEntry}
+                keyboardType={keyboardType}
+                multiline={multiline}
+                numberOfLines={numberOfLines}
+                autoCapitalize={autoCapitalize || 'none'}
+                autoCorrect={autoCorrect !== undefined ? autoCorrect : false}
+                editable={editable}
+            />
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </View>
+    );
+};
 
 // Primary button
-export const Button = ({ label, onPress, loading, disabled, variant = 'primary', style }) => (
-    <TouchableOpacity
-        style={[
-            styles.btn,
-            variant === 'primary' && styles.btnPrimary,
-            variant === 'secondary' && styles.btnSecondary,
-            variant === 'danger' && styles.btnDanger,
-            variant === 'ghost' && styles.btnGhost,
-            (disabled || loading) && styles.btnDisabled,
-            style,
-        ]}
-        onPress={onPress}
-        disabled={disabled || loading}
-        activeOpacity={0.8}
-    >
-        {loading ? (
-            <ActivityIndicator color={variant === 'ghost' ? colors.primary : '#fff'} />
-        ) : (
-            <Text style={[
-                styles.btnText,
-                variant === 'ghost' && { color: colors.primary },
-                variant === 'secondary' && { color: colors.primary },
-            ]}>
-                {label}
-            </Text>
-        )}
-    </TouchableOpacity>
-);
+export const Button = ({ label, onPress, loading, disabled, variant = 'primary', style }) => {
+    const { styles, colors } = useThemedStyles();
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const animateTo = (toValue) => {
+        Animated.spring(scale, {
+            toValue,
+            useNativeDriver: true,
+            speed: 40,
+            bounciness: 6,
+        }).start();
+    };
+
+    return (
+        <Animated.View style={{ transform: [{ scale }] }}>
+            <Pressable
+                style={[
+                    styles.btn,
+                    variant === 'primary' && styles.btnPrimary,
+                    variant === 'secondary' && styles.btnSecondary,
+                    variant === 'danger' && styles.btnDanger,
+                    variant === 'ghost' && styles.btnGhost,
+                    (disabled || loading) && styles.btnDisabled,
+                    style,
+                ]}
+                onPress={onPress}
+                disabled={disabled || loading}
+                onPressIn={() => animateTo(0.96)}
+                onPressOut={() => animateTo(1)}
+            >
+                {loading ? (
+                    <ActivityIndicator color={variant === 'ghost' ? colors.primary : '#fff'} />
+                ) : (
+                    <Text style={[
+                        styles.btnText,
+                        variant === 'ghost' && { color: colors.primary },
+                        variant === 'secondary' && { color: colors.primary },
+                    ]}>
+                        {label}
+                    </Text>
+                )}
+            </Pressable>
+        </Animated.View>
+    );
+};
 
 // Card container
-export const Card = ({ children, style }) => (
-    <View style={[styles.card, style]}>{children}</View>
-);
+export const Card = ({ children, style }) => {
+    const { styles } = useThemedStyles();
+    return <View style={[styles.card, style]}>{children}</View>;
+};
 
 // Section title
-export const SectionTitle = ({ label }) => (
-    <Text style={styles.sectionTitle}>{label}</Text>
-);
+export const SectionTitle = ({ label }) => {
+    const { styles } = useThemedStyles();
+    return <Text style={styles.sectionTitle}>{label}</Text>;
+};
 
 // Badge
-export const Badge = ({ label, color }) => (
-    <View style={[styles.badge, { backgroundColor: color }]}>
-        <Text style={styles.badgeText}>{label}</Text>
-    </View>
-);
+export const Badge = ({ label, color }) => {
+    const { styles } = useThemedStyles();
+    return (
+        <View style={[styles.badge, { backgroundColor: color }]}>
+            <Text style={styles.badgeText}>{label}</Text>
+        </View>
+    );
+};
 
 // Divider
-export const Divider = () => <View style={styles.divider} />;
+export const Divider = () => {
+    const { styles } = useThemedStyles();
+    return <View style={styles.divider} />;
+};
 
 // Empty state
-export const EmptyState = ({ icon, title, subtitle }) => (
-    <View style={styles.emptyState}>
-        {icon ? <Text style={styles.emptyIcon}>{icon}</Text> : null}
-        <Text style={styles.emptyTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
-    </View>
-);
+export const EmptyState = ({ icon, title, subtitle }) => {
+    const { styles } = useThemedStyles();
+    return (
+        <FadeIn style={styles.emptyState}>
+            {icon ? <Text style={styles.emptyIcon}>{icon}</Text> : null}
+            <Text style={styles.emptyTitle}>{title}</Text>
+            {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
+        </FadeIn>
+    );
+};
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
