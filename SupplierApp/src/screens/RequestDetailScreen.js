@@ -1,4 +1,3 @@
-// SupplierApp/src/screens/RequestDetailScreen.js
 import React, { useState, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
@@ -35,6 +34,7 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     const [workersLoaded, setWorkersLoaded] = useState(false);
     const [showAssignPicker, setShowAssignPicker] = useState(false);
     const [assigning, setAssigning] = useState(false);
+    const [assignPermanently, setAssignPermanently] = useState(false);
 
     const loadWorkers = async () => {
         if (workersLoaded) return;
@@ -55,9 +55,17 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     const handleAssignRep = async (worker) => {
         setAssigning(true);
         try {
-            await client.post(`/api/requests/${request.id}/assign_rep/`, { sales_rep_id: worker.id });
+            await client.post(`/api/requests/${request.id}/assign_rep/`, {
+                sales_rep_id: worker.id,
+                permanent: assignPermanently,
+            });
             setShowAssignPicker(false);
-            Alert.alert('Готово', `Заявка назначена сотруднику ${worker.username}`);
+            Alert.alert(
+                'Готово',
+                assignPermanently
+                    ? `Заявка назначена сотруднику ${worker.username}. Все будущие заявки этого клиента тоже будут закреплены за ним.`
+                    : `Заявка назначена сотруднику ${worker.username}.`
+            );
             onUpdate();
         } catch (e) {
             Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось назначить сотрудника');
@@ -191,6 +199,23 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                         ) : canAssignRep ? (
                             showAssignPicker ? (
                                 <View>
+                                    <TouchableOpacity
+                                        style={styles.permanentToggleRow}
+                                        onPress={() => setAssignPermanently(v => !v)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={[styles.checkbox, assignPermanently && styles.checkboxActive]}>
+                                            {assignPermanently && <Icon name="check" size={12} color="#fff" />}
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.permanentToggleTitle}>Закрепить навсегда</Text>
+                                            <Text style={styles.permanentToggleSub}>
+                                                {assignPermanently
+                                                    ? 'Все будущие заявки этого клиента будут автоматически назначаться выбранному сотруднику.'
+                                                    : 'Только эта заявка. В следующий раз клиента можно назначить другому сотруднику.'}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
                                     {workers.length === 0 ? (
                                         <Text style={styles.emptyText}>
                                             {workersLoaded ? 'Нет доступных сотрудников' : 'Загрузка...'}
@@ -561,4 +586,26 @@ const createStyles = (colors) => StyleSheet.create({
     },
     repOptionText: { fontSize: 14, fontWeight: '600', color: colors.text, flex: 1 },
     repOptionSub: { fontSize: 12, color: colors.textTertiary },
+    permanentToggleRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: spacing.sm,
+        backgroundColor: colors.background,
+        borderRadius: radius.md,
+        padding: spacing.md,
+        marginBottom: spacing.md,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 1,
+    },
+    checkboxActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    permanentToggleTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 2 },
+    permanentToggleSub: { fontSize: 12, color: colors.textSecondary, lineHeight: 16 },
 });

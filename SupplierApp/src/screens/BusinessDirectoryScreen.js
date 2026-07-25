@@ -1,4 +1,3 @@
-// SupplierApp/src/screens/BusinessDirectoryScreen.js
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
@@ -52,6 +51,7 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
     const [quantities, setQuantities] = useState({});
     const [saving, setSaving] = useState(false);
     const [selectedWorker, setSelectedWorker] = useState(null);
+    const [selectedClient, setSelectedClient] = useState(null);
     const [clientSort, setClientSort] = useState('default'); // 'default' | 'revenue' | 'requests' | 'recent'
     const [workerSort, setWorkerSort] = useState('default'); // 'default' | 'revenue' | 'requests'
 
@@ -137,16 +137,27 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
     };
 
     // --- KPIs -----------------------------------------------------------
-    // Per-client stats: how much each business_client has ordered, how many
-    // requests, and when they last ordered. Keyed by BusinessClient id.
+    // Helper: a stable key across the two different client "kinds" (CRM
+    // contacts have their own id sequence, registered Users have theirs —
+    // without this, a business_client #4 and a registered client #4 would
+    // collide in any id-keyed map).
+    const clientKey = (c) => `${c.client_type}-${c.id}`;
+
+    // Per-client stats: how much each client has ordered, how many
+    // requests, and when they last ordered. Keyed by clientKey().
+    // Business (CRM) clients match via request.business_client;
+    // registered clients match via request.client.
     const clientStatsMap = useMemo(() => {
         const map = {};
         for (const c of clients) {
-            map[c.id] = { totalSpent: 0, totalRequests: 0, fulfilledCount: 0, lastActivity: null };
+            map[clientKey(c)] = { totalSpent: 0, totalRequests: 0, fulfilledCount: 0, lastActivity: null };
         }
         for (const r of requests) {
-            if (!r.business_client) continue;
-            const entry = map[r.business_client];
+            const key = r.business_client
+                ? `business-${r.business_client}`
+                : r.client ? `registered-${r.client}` : null;
+            if (!key) continue;
+            const entry = map[key];
             if (!entry) continue;
             entry.totalRequests += 1;
             if (r.status === 'fulfilled') {
@@ -208,11 +219,11 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
     const sortedClients = useMemo(() => {
         const list = [...clients];
         if (clientSort === 'revenue') {
-            list.sort((a, b) => (clientStatsMap[b.id]?.totalSpent || 0) - (clientStatsMap[a.id]?.totalSpent || 0));
+            list.sort((a, b) => (clientStatsMap[clientKey(b)]?.totalSpent || 0) - (clientStatsMap[clientKey(a)]?.totalSpent || 0));
         } else if (clientSort === 'requests') {
-            list.sort((a, b) => (clientStatsMap[b.id]?.totalRequests || 0) - (clientStatsMap[a.id]?.totalRequests || 0));
+            list.sort((a, b) => (clientStatsMap[clientKey(b)]?.totalRequests || 0) - (clientStatsMap[clientKey(a)]?.totalRequests || 0));
         } else if (clientSort === 'recent') {
-            list.sort((a, b) => new Date(clientStatsMap[b.id]?.lastActivity || 0) - new Date(clientStatsMap[a.id]?.lastActivity || 0));
+            list.sort((a, b) => new Date(clientStatsMap[clientKey(b)]?.lastActivity || 0) - new Date(clientStatsMap[clientKey(a)]?.lastActivity || 0));
         }
         return list;
     }, [clients, clientSort, clientStatsMap]);
@@ -230,13 +241,25 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
     const formatMoney = (n) => `${Math.round(n).toLocaleString('ru-RU')} ₸`;
 
     const renderClient = ({ item }) => {
-        const stats = clientStatsMap[item.id] || { totalSpent: 0, totalRequests: 0, lastActivity: null };
+        const stats = clientStatsMap[clientKey(item)] || { totalSpent: 0, totalRequests: 0, lastActivity: null };
+        const isRegistered = item.client_type === 'registered';
         return (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={() => setSelectedClient(item)} activeOpacity={0.8}>
             <View style={styles.cardHeader}>
-                <View style={styles.avatar}><Text style={styles.avatarText}>{item.name?.[0]?.toUpperCase() || 'К'}</Text></View>
+                {isRegistered && item.profile_picture ? (
+                    <Image source={{ uri: item.profile_picture }} style={styles.avatar} />
+                ) : (
+                    <View style={styles.avatar}><Text style={styles.avatarText}>{item.name?.[0]?.toUpperCase() || 'К'}</Text></View>
+                )}
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{item.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.name}>{item.name}</Text>
+                        {isRegistered && (
+                            <View style={styles.registeredBadge}>
+                                <Text style={styles.registeredBadgeText}>В приложении</Text>
+                            </View>
+                        )}
+                    </View>
                     <Text style={styles.muted}>{item.company_name || 'Частный клиент'}</Text>
                 </View>
                 <View style={styles.count}><Text style={styles.countText}>{stats.totalRequests || item.request_count || 0} заявок</Text></View>
@@ -261,14 +284,19 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
 
             <Text style={styles.detail}>Телефон: {item.phone || '—'}</Text>
             {item.email ? <Text style={styles.detail}>Email: {item.email}</Text> : null}
-            <Text style={styles.detail}>Адрес: {item.address}</Text>
-            <OpenAddressInMap address={item.address} />
+            {item.address ? <Text style={styles.detail}>Адрес: {item.address}</Text> : null}
+            {item.address ? <OpenAddressInMap address={item.address} /> : null}
             {item.sales_rep_name ? <Text style={styles.assigned}>Ответственный: {item.sales_rep_name}</Text> : null}
-            <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: colors.purple }]} onPress={() => openRequest(item)}>
-                <Icon name="plus" size={15} color={colors.primary} />
-                <Text style={[styles.actionBtnText]}>Создать заявку</Text>
-            </TouchableOpacity>
-        </View>
+            {!isRegistered && (
+                <TouchableOpacity
+                    style={[styles.actionBtn, { flex: 1, backgroundColor: colors.purple }]}
+                    onPress={(e) => { e.stopPropagation(); openRequest(item); }}
+                >
+                    <Icon name="plus" size={15} color={colors.primary} />
+                    <Text style={[styles.actionBtnText]}>Создать заявку</Text>
+                </TouchableOpacity>
+            )}
+        </TouchableOpacity>
         );
     };
 
@@ -380,7 +408,7 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
         <CrossFade activeKey={loading ? 'loading' : section} style={{ flex: 1 }}>
         {loading ? <Text style={styles.loading}>Загрузка...</Text> : <FlatList
             data={data}
-            keyExtractor={(item) => String(item.id)}
+            keyExtractor={(item) => section === 'workers' ? String(item.id) : clientKey(item)}
             renderItem={({ item, index }) => (
                 <AnimatedListItem index={index}>
                     {section === 'workers' ? renderWorker({ item }) : renderClient({ item })}
@@ -470,10 +498,135 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
                                     <Text style={styles.name}>{customer.name}</Text>
                                     <Text style={styles.muted}>{customer.company_name || customer.phone || 'Частный клиент'}</Text>
                                 </View>
-                                <Text style={styles.clientRequestCount}>{clientStatsMap[customer.id]?.totalRequests ?? customer.request_count ?? 0} заявок</Text>
+                                <Text style={styles.clientRequestCount}>{clientStatsMap[clientKey(customer)]?.totalRequests ?? customer.request_count ?? 0} заявок</Text>
                             </View>
                         )) : <Text style={styles.muted}>У сотрудника пока нет закреплённых клиентов.</Text>}
                     </ScrollView>
+                </ScrollView>
+            </View>
+        </Modal>
+
+        <Modal
+            visible={Boolean(selectedClient)}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setSelectedClient(null)}
+        >
+            <View style={styles.overlay}>
+                <ScrollView style={styles.modal}>
+                    {selectedClient && (() => {
+                        const stats = clientStatsMap[clientKey(selectedClient)] || { totalSpent: 0, totalRequests: 0, fulfilledCount: 0, lastActivity: null };
+                        const isRegistered = selectedClient.client_type === 'registered';
+                        return (
+                            <>
+                                <View style={styles.modalHeader}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                                        {isRegistered && selectedClient.profile_picture ? (
+                                            <Image source={{ uri: selectedClient.profile_picture }} style={styles.smallAvatar} />
+                                        ) : (
+                                            <View style={styles.smallAvatar}>
+                                                <Text style={styles.avatarText}>{selectedClient.name?.[0]?.toUpperCase() || 'К'}</Text>
+                                            </View>
+                                        )}
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.modalTitle}>{selectedClient.name}</Text>
+                                            <Text style={styles.muted}>
+                                                {selectedClient.company_name || (isRegistered ? 'Клиент приложения' : 'Частный клиент')}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity onPress={() => setSelectedClient(null)} hitSlop={10}>
+                                        <Icon name="x" size={22} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {isRegistered && (
+                                    <View style={styles.verifyRow}>
+                                        <View style={[styles.verifyChip, selectedClient.is_phone_verified && styles.verifyChipActive]}>
+                                            <Icon name="phone" size={12} color={selectedClient.is_phone_verified ? colors.success : colors.textTertiary} />
+                                            <Text style={[styles.verifyChipText, selectedClient.is_phone_verified && { color: colors.success }]}>
+                                                {selectedClient.is_phone_verified ? 'Телефон подтверждён' : 'Телефон не подтверждён'}
+                                            </Text>
+                                        </View>
+                                        <View style={[styles.verifyChip, selectedClient.is_email_verified && styles.verifyChipActive]}>
+                                            <Icon name="mail" size={12} color={selectedClient.is_email_verified ? colors.success : colors.textTertiary} />
+                                            <Text style={[styles.verifyChipText, selectedClient.is_email_verified && { color: colors.success }]}>
+                                                {selectedClient.is_email_verified ? 'Email подтверждён' : 'Email не подтверждён'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+
+                                <Text style={styles.sectionTitle}>Статистика</Text>
+                                <View style={styles.statsGrid}>
+                                    <View style={styles.statCard}><Text style={styles.statValue}>{stats.totalRequests}</Text><Text style={styles.statLabel}>Заявок</Text></View>
+                                    <View style={styles.statCard}><Text style={styles.statValue}>{stats.fulfilledCount}</Text><Text style={styles.statLabel}>Выполнено</Text></View>
+                                </View>
+                                <View style={styles.revenueCard}>
+                                    <Text style={styles.statLabel}>Всего потрачено</Text>
+                                    <Text style={styles.revenueValue}>{formatMoney(stats.totalSpent)}</Text>
+                                </View>
+
+                                <Text style={styles.sectionTitle}>Контакты</Text>
+                                <View style={styles.contactRow}>
+                                    <Icon name="phone" size={14} color={colors.textTertiary} />
+                                    <Text style={styles.detail}>{selectedClient.phone || 'Не указан'}</Text>
+                                </View>
+                                {selectedClient.email ? (
+                                    <View style={styles.contactRow}>
+                                        <Icon name="mail" size={14} color={colors.textTertiary} />
+                                        <Text style={styles.detail}>{selectedClient.email}</Text>
+                                    </View>
+                                ) : null}
+                                {selectedClient.address ? (
+                                    <View style={styles.contactRow}>
+                                        <Icon name="map_pin" size={14} color={colors.textTertiary} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.detail}>{selectedClient.address}</Text>
+                                            <OpenAddressInMap address={selectedClient.address} />
+                                        </View>
+                                    </View>
+                                ) : null}
+                                {isRegistered && selectedClient.city_display ? (
+                                    <View style={styles.contactRow}>
+                                        <Icon name="building" size={14} color={colors.textTertiary} />
+                                        <Text style={styles.detail}>{selectedClient.city_display}</Text>
+                                    </View>
+                                ) : null}
+                                {isRegistered && selectedClient.date_joined ? (
+                                    <View style={styles.contactRow}>
+                                        <Icon name="calendar" size={14} color={colors.textTertiary} />
+                                        <Text style={styles.detail}>
+                                            В приложении с {new Date(selectedClient.date_joined).toLocaleDateString('ru-RU')}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                                {selectedClient.notes ? (
+                                    <>
+                                        <Text style={styles.sectionTitle}>Заметки</Text>
+                                        <Text style={styles.detail}>{selectedClient.notes}</Text>
+                                    </>
+                                ) : null}
+                                {selectedClient.sales_rep_name ? (
+                                    <Text style={styles.assigned}>Ответственный сотрудник: {selectedClient.sales_rep_name}</Text>
+                                ) : (
+                                    <Text style={styles.muted}>Сотрудник ещё не закреплён за этим клиентом.</Text>
+                                )}
+
+                                {!isRegistered && (
+                                    <Button
+                                        label="Создать заявку"
+                                        onPress={() => {
+                                            const c = selectedClient;
+                                            setSelectedClient(null);
+                                            openRequest(c);
+                                        }}
+                                        style={{ marginTop: spacing.lg }}
+                                    />
+                                )}
+                            </>
+                        );
+                    })()}
                 </ScrollView>
             </View>
         </Modal>
@@ -552,4 +705,30 @@ const createStyles = (colors) => StyleSheet.create({
         paddingVertical: 4,
     },
     kpiChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+
+    registeredBadge: {
+        backgroundColor: '#DBEAFE',
+        borderRadius: radius.sm,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    registeredBadgeText: { fontSize: 10, fontWeight: '700', color: '#1D4ED8' },
+    verifyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+    verifyChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: colors.background,
+        borderRadius: radius.sm,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 4,
+    },
+    verifyChipActive: { backgroundColor: '#ECFDF5' },
+    verifyChipText: { fontSize: 11, color: colors.textTertiary, fontWeight: '600' },
+    contactRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: spacing.sm,
+        marginBottom: spacing.sm,
+    },
 });

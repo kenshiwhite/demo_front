@@ -745,10 +745,10 @@ export default function SupplierHomeScreen() {
                                 <Button
                                     label="Отмена"
                                     onPress={() => {
-                                        setProductModal(false);
-                                        setCategoryModal(false);
-                                        setProductImage(null);
-                                        setEditingProduct(null);
+                                        setResponseModal(false);
+                                        setSelectedRequest(null);
+                                        setMessage('');
+                                        setOfferedPrice('');
                                     }}
                                     variant="ghost"
                                     style={{ marginTop: spacing.sm }}
