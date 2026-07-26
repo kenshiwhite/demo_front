@@ -1,3 +1,4 @@
+// SupplierApp/src/screens/BusinessDirectoryScreen.js
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
@@ -6,34 +7,12 @@ import {
 import client from '../api/client';
 import Icon from '../components/Icon';
 import { AddressMap, OpenAddressInMap } from '../components/AddressMap';
-import { Button, InputField } from '../components/UI';
+import { Button, InputField, Badge } from '../components/UI';
 import { radius, spacing, typography } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { CrossFade, AnimatedListItem } from '../components/AnimatedPrimitives';
 
 const emptyPerson = { name: '', phone: '', email: '', company_name: '', address: '', notes: '', latitude: null, longitude: null };
-
-function SortChip({ label, active, onPress }) {
-    const { colors } = useTheme();
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            style={{
-                paddingHorizontal: spacing.md,
-                paddingVertical: 6,
-                borderRadius: radius.full,
-                backgroundColor: active ? colors.primary : colors.background,
-                borderWidth: 1,
-                borderColor: active ? colors.primary : colors.border,
-                marginRight: spacing.sm,
-            }}
-        >
-            <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#fff' : colors.textSecondary }}>
-                {label}
-            </Text>
-        </TouchableOpacity>
-    );
-}
 
 export default function BusinessDirectoryScreen({ isSupplier }) {
     const { colors } = useTheme();
@@ -52,8 +31,6 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
     const [saving, setSaving] = useState(false);
     const [selectedWorker, setSelectedWorker] = useState(null);
     const [selectedClient, setSelectedClient] = useState(null);
-    const [clientSort, setClientSort] = useState('default'); // 'default' | 'revenue' | 'requests' | 'recent'
-    const [workerSort, setWorkerSort] = useState('default'); // 'default' | 'revenue' | 'requests'
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -192,56 +169,11 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
         return map;
     }, [workers, clients, requests]);
 
-    // Business-wide summary shown at the top of the screen.
-    const businessKPIs = useMemo(() => {
-        const fulfilled = requests.filter(r => r.status === 'fulfilled');
-        const pending = requests.filter(r => r.status === 'pending');
-        const totalRevenue = fulfilled.reduce((sum, r) => sum + Number(r.total_price || 0), 0);
-        const decidable = requests.filter(r => ['fulfilled', 'declined', 'cancelled'].includes(r.status));
-        return {
-            totalRevenue,
-            totalClients: clients.length,
-            totalWorkers: workers.length,
-            totalRequests: requests.length,
-            pendingCount: pending.length,
-            fulfilledCount: fulfilled.length,
-            avgOrderValue: fulfilled.length ? totalRevenue / fulfilled.length : 0,
-            conversionRate: decidable.length ? Math.round((fulfilled.length / decidable.length) * 100) : 0,
-            topWorker: workers.reduce((best, w) => {
-                const rev = workerStatsMap[w.id]?.revenue || 0;
-                return !best || rev > best.revenue ? { name: w.username, revenue: rev } : best;
-            }, null),
-        };
-    }, [requests, clients, workers, workerStatsMap]);
-
     const workerStats = selectedWorker ? workerStatsMap[selectedWorker.id] : null;
-
-    const sortedClients = useMemo(() => {
-        const list = [...clients];
-        if (clientSort === 'revenue') {
-            list.sort((a, b) => (clientStatsMap[clientKey(b)]?.totalSpent || 0) - (clientStatsMap[clientKey(a)]?.totalSpent || 0));
-        } else if (clientSort === 'requests') {
-            list.sort((a, b) => (clientStatsMap[clientKey(b)]?.totalRequests || 0) - (clientStatsMap[clientKey(a)]?.totalRequests || 0));
-        } else if (clientSort === 'recent') {
-            list.sort((a, b) => new Date(clientStatsMap[clientKey(b)]?.lastActivity || 0) - new Date(clientStatsMap[clientKey(a)]?.lastActivity || 0));
-        }
-        return list;
-    }, [clients, clientSort, clientStatsMap]);
-
-    const sortedWorkers = useMemo(() => {
-        const list = [...workers];
-        if (workerSort === 'revenue') {
-            list.sort((a, b) => (workerStatsMap[b.id]?.revenue || 0) - (workerStatsMap[a.id]?.revenue || 0));
-        } else if (workerSort === 'requests') {
-            list.sort((a, b) => (workerStatsMap[b.id]?.requestCount || 0) - (workerStatsMap[a.id]?.requestCount || 0));
-        }
-        return list;
-    }, [workers, workerSort, workerStatsMap]);
 
     const formatMoney = (n) => `${Math.round(n).toLocaleString('ru-RU')} ₸`;
 
     const renderClient = ({ item }) => {
-        const stats = clientStatsMap[clientKey(item)] || { totalSpent: 0, totalRequests: 0, lastActivity: null };
         const isRegistered = item.client_type === 'registered';
         return (
         <TouchableOpacity style={styles.card} onPress={() => setSelectedClient(item)} activeOpacity={0.8}>
@@ -254,38 +186,13 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
                 <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.name}>{item.name}</Text>
-                        {isRegistered && (
-                            <View style={styles.registeredBadge}>
-                                <Text style={styles.registeredBadgeText}>В приложении</Text>
-                            </View>
-                        )}
+                        {isRegistered && <Badge label="В приложении" color={colors.purple} />}
                     </View>
                     <Text style={styles.muted}>{item.company_name || 'Частный клиент'}</Text>
                 </View>
-                <View style={styles.count}><Text style={styles.countText}>{stats.totalRequests || item.request_count || 0} заявок</Text></View>
+                <View style={styles.count}><Text style={styles.countText}>{item.request_count || 0} заявок</Text></View>
             </View>
-
-            {isSupplier && (
-                <View style={styles.kpiRow}>
-                    <View style={styles.kpiChip}>
-                        <Icon name="trending_up" size={12} color={colors.success} />
-                        <Text style={styles.kpiChipText}>{formatMoney(stats.totalSpent)}</Text>
-                    </View>
-                    <View style={styles.kpiChip}>
-                        <Icon name="clock" size={12} color={colors.textTertiary} />
-                        <Text style={styles.kpiChipText}>
-                            {stats.lastActivity
-                                ? `Заказ: ${new Date(stats.lastActivity).toLocaleDateString('ru-RU')}`
-                                : 'Заказов ещё не было'}
-                        </Text>
-                    </View>
-                </View>
-            )}
-
             <Text style={styles.detail}>Телефон: {item.phone || '—'}</Text>
-            {item.email ? <Text style={styles.detail}>Email: {item.email}</Text> : null}
-            {item.address ? <Text style={styles.detail}>Адрес: {item.address}</Text> : null}
-            {item.address ? <OpenAddressInMap address={item.address} /> : null}
             {item.sales_rep_name ? <Text style={styles.assigned}>Ответственный: {item.sales_rep_name}</Text> : null}
             {!isRegistered && (
                 <TouchableOpacity
@@ -301,7 +208,6 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
     };
 
     const renderWorker = ({ item }) => {
-        const stats = workerStatsMap[item.id] || { revenue: 0, requestCount: 0, conversionRate: 0 };
         return (
         <TouchableOpacity
             style={styles.card}
@@ -317,93 +223,18 @@ export default function BusinessDirectoryScreen({ isSupplier }) {
                 <View style={{ flex: 1 }}><Text style={styles.name}>{item.username}</Text><Text style={styles.muted}>{item.phone}</Text></View>
                 <Icon name="chevronRight" size={18} color={colors.textTertiary} />
             </View>
-
-            <View style={styles.kpiRow}>
-                <View style={styles.kpiChip}>
-                    <Icon name="trending_up" size={12} color={colors.success} />
-                    <Text style={styles.kpiChipText}>{formatMoney(stats.revenue)}</Text>
-                </View>
-                <View style={styles.kpiChip}>
-                    <Icon name="package" size={12} color={colors.textTertiary} />
-                    <Text style={styles.kpiChipText}>{stats.requestCount} заявок</Text>
-                </View>
-                <View style={styles.kpiChip}>
-                    <Icon name="check" size={12} color={colors.primary} />
-                    <Text style={styles.kpiChipText}>{stats.conversionRate}% успех</Text>
-                </View>
-            </View>
-
             {item.email ? <Text style={styles.detail}>Email: {item.email}</Text> : null}
             <Text style={styles.assigned}>Нажмите, чтобы посмотреть клиентов и продажи.</Text>
         </TouchableOpacity>
         );
     };
 
-    const data = section === 'workers' ? sortedWorkers : sortedClients;
+    const data = section === 'workers' ? workers : clients;
     return <View style={styles.container}>
         <View style={styles.switcher}>
             <TouchableOpacity style={[styles.switch, section === 'clients' && styles.switchActive]} onPress={() => setSection('clients')}><Text style={[styles.switchText, section === 'clients' && styles.switchTextActive]}>Клиенты</Text></TouchableOpacity>
             {isSupplier && <TouchableOpacity style={[styles.switch, section === 'workers' && styles.switchActive]} onPress={() => setSection('workers')}><Text style={[styles.switchText, section === 'workers' && styles.switchTextActive]}>Сотрудники</Text></TouchableOpacity>}
         </View>
-
-        {isSupplier && !loading && (
-            <View style={styles.kpiDashboard}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kpiDashboardScroll}>
-                    <View style={styles.kpiCard}>
-                        <Text style={styles.kpiCardLabel}>Выручка</Text>
-                        <Text style={styles.kpiCardValue}>{formatMoney(businessKPIs.totalRevenue)}</Text>
-                    </View>
-                    <View style={styles.kpiCard}>
-                        <Text style={styles.kpiCardLabel}>Ср. чек</Text>
-                        <Text style={styles.kpiCardValue}>{formatMoney(businessKPIs.avgOrderValue)}</Text>
-                    </View>
-                    <View style={styles.kpiCard}>
-                        <Text style={styles.kpiCardLabel}>Конверсия</Text>
-                        <Text style={styles.kpiCardValue}>{businessKPIs.conversionRate}%</Text>
-                    </View>
-                    <View style={styles.kpiCard}>
-                        <Text style={styles.kpiCardLabel}>В ожидании</Text>
-                        <Text style={styles.kpiCardValue}>{businessKPIs.pendingCount}</Text>
-                    </View>
-                    <View style={styles.kpiCard}>
-                        <Text style={styles.kpiCardLabel}>Клиентов</Text>
-                        <Text style={styles.kpiCardValue}>{businessKPIs.totalClients}</Text>
-                    </View>
-                    <View style={styles.kpiCard}>
-                        <Text style={styles.kpiCardLabel}>Сотрудников</Text>
-                        <Text style={styles.kpiCardValue}>{businessKPIs.totalWorkers}</Text>
-                    </View>
-                </ScrollView>
-                {businessKPIs.topWorker && businessKPIs.topWorker.revenue > 0 && (
-                    <View style={styles.topWorkerBanner}>
-                        <Text style={styles.topWorkerBannerIcon}>🏆</Text>
-                        <Text style={styles.topWorkerBannerText}>
-                            Лучший сотрудник: <Text style={{ fontWeight: '800' }}>{businessKPIs.topWorker.name}</Text> — {formatMoney(businessKPIs.topWorker.revenue)}
-                        </Text>
-                    </View>
-                )}
-            </View>
-        )}
-
-        {isSupplier && !loading && (
-            <View style={styles.sortRow}>
-                <Text style={styles.sortLabel}>Сортировать:</Text>
-                {section === 'clients' ? (
-                    <>
-                        <SortChip label="По умолчанию" active={clientSort === 'default'} onPress={() => setClientSort('default')} />
-                        <SortChip label="По выручке" active={clientSort === 'revenue'} onPress={() => setClientSort('revenue')} />
-                        <SortChip label="По заявкам" active={clientSort === 'requests'} onPress={() => setClientSort('requests')} />
-                        <SortChip label="Недавние" active={clientSort === 'recent'} onPress={() => setClientSort('recent')} />
-                    </>
-                ) : (
-                    <>
-                        <SortChip label="По умолчанию" active={workerSort === 'default'} onPress={() => setWorkerSort('default')} />
-                        <SortChip label="По выручке" active={workerSort === 'revenue'} onPress={() => setWorkerSort('revenue')} />
-                        <SortChip label="По заявкам" active={workerSort === 'requests'} onPress={() => setWorkerSort('requests')} />
-                    </>
-                )}
-            </View>
-        )}
 
         <CrossFade activeKey={loading ? 'loading' : section} style={{ flex: 1 }}>
         {loading ? <Text style={styles.loading}>Загрузка...</Text> : <FlatList
@@ -646,73 +477,6 @@ const createStyles = (colors) => StyleSheet.create({
     },
     actionBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
-    // KPI dashboard
-    kpiDashboard: { paddingTop: spacing.md, backgroundColor: colors.card },
-    kpiDashboardScroll: { paddingHorizontal: spacing.md, gap: spacing.sm },
-    kpiCard: {
-        minWidth: 110,
-        backgroundColor: colors.background,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
-        marginRight: spacing.sm,
-    },
-    kpiCardLabel: { fontSize: 11, color: colors.textSecondary, marginBottom: 3 },
-    kpiCardValue: { fontSize: 15, fontWeight: '800', color: colors.text },
-    topWorkerBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-        marginHorizontal: spacing.md,
-        marginTop: spacing.sm,
-        marginBottom: spacing.xs,
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing.md,
-        backgroundColor: '#FFFBEB',
-        borderRadius: radius.md,
-    },
-    topWorkerBannerIcon: { fontSize: 14 },
-    topWorkerBannerText: { fontSize: 12, color: '#92400E', flex: 1 },
-
-    // Sort row
-    sortRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        backgroundColor: colors.card,
-        flexWrap: 'wrap',
-        gap: spacing.xs,
-    },
-    sortLabel: { fontSize: 12, color: colors.textTertiary, marginRight: spacing.xs },
-
-    // Per-card KPI chips
-    kpiRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.xs,
-        marginBottom: spacing.sm,
-    },
-    kpiChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: colors.background,
-        borderRadius: radius.sm,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 4,
-    },
-    kpiChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-
-    registeredBadge: {
-        backgroundColor: '#DBEAFE',
-        borderRadius: radius.sm,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-    },
-    registeredBadgeText: { fontSize: 10, fontWeight: '700', color: '#1D4ED8' },
     verifyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
     verifyChip: {
         flexDirection: 'row',

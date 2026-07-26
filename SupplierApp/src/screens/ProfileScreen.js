@@ -19,7 +19,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { InputField, Button, Card, SectionTitle, Divider } from '../components/UI';
 import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 
-export default function ProfileScreen({ onClose }) {
+export default function ProfileScreen({ onClose, initialShowSettings = false }) {
     const { user, signIn, signOut } = useAuth();
     const { colors } = useTheme();
     const { t } = useLanguage();
@@ -28,7 +28,7 @@ export default function ProfileScreen({ onClose }) {
     const [loading, setLoading] = useState(false);
     const [passwordModal, setPasswordModal] = useState(false);
     const [emailModal, setEmailModal] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
+    const [showSettings, setShowSettings] = useState(initialShowSettings);
         // inside component:
     const { selectedCity, cityLabel, selectCity } = useCity();
     const [showCitySelect, setShowCitySelect] = useState(false);
@@ -696,4 +696,4 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         gap: spacing.sm,
     },
-});
+});9

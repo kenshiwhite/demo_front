@@ -16,6 +16,7 @@ import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import ProfileScreen from './ProfileScreen';
 import AnalyticsScreen from './AnalyticsScreen';
+import Sidebar from '../components/Sidebar';
 import { InputField, Button, SectionTitle } from '../components/UI';
 import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -45,6 +46,9 @@ export default function SupplierHomeScreen() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [businessInitialSection, setBusinessInitialSection] = useState('clients');
+    const [profileInitialSettings, setProfileInitialSettings] = useState(false);
     const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [showCalendar, setShowCalendar] = useState(false);
@@ -123,6 +127,24 @@ export default function SupplierHomeScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSidebarNavigate = (key) => {
+        if (key === 'profile') {
+            setProfileInitialSettings(false);
+            setShowProfile(true);
+        } else if (key === 'settings') {
+            setProfileInitialSettings(true);
+            setShowProfile(true);
+        } else if (key === 'clients') {
+            setBusinessInitialSection('clients');
+            setView('business');
+        } else if (key === 'workers') {
+            setBusinessInitialSection('workers');
+            setView('business');
+        } else if (key === 'analytics') {
+            setShowAnalytics(true);
         }
     };
 
@@ -519,6 +541,13 @@ export default function SupplierHomeScreen() {
                 </View>
             </View> */}
             <View style={styles.header}>
+                <TouchableOpacity
+                    style={[styles.headerIconBtn, { marginRight: spacing.sm }]}
+                    onPress={() => setShowSidebar(true)}
+                    accessibilityLabel="Меню"
+                >
+                    <Icon name="list" size={20} color="#fff" />
+                </TouchableOpacity>
                 <View style={styles.headerIdentity}>
                     <TouchableOpacity
                         style={styles.citySelector}
@@ -536,19 +565,6 @@ export default function SupplierHomeScreen() {
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
-                    {user?.role === 'supplier' && (
-                        <TouchableOpacity
-                            style={styles.headerBusinessBtn}
-                            onPress={() => setView('business')}
-                            activeOpacity={0.8}
-                            accessibilityLabel="Клиенты и сотрудники"
-                        >
-                            <Icon name="team" size={20} color="#fff" />
-                        </TouchableOpacity>
-                    )}
-                    {user?.role === 'supplier' && <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAnalytics(true)}>
-                        <Icon name="bar_chart" size={20} color="#fff" />
-                    </TouchableOpacity>}
                     <TouchableOpacity
                         style={styles.headerIconBtn}
                         onPress={() => { setShowNotifications(true); loadUnreadCount(); }}
@@ -561,9 +577,6 @@ export default function SupplierHomeScreen() {
                                 </Text>
                             </View>
                         )}
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
-                        <Icon name="user" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -640,7 +653,7 @@ export default function SupplierHomeScreen() {
 
             <CrossFade activeKey={loading ? 'loading' : `${view}-${requestsSubTab}`} style={{ flex: 1 }}>
             {view === 'business' ? (
-                <BusinessDirectoryScreen isSupplier={user?.role === 'supplier'} />
+                <BusinessDirectoryScreen isSupplier={user?.role === 'supplier'} initialSection={businessInitialSection} />
             ) : view === 'requests' && user?.role === 'sales_rep' && requestsSubTab === 'clients' ? (
                 <BusinessDirectoryScreen isSupplier={false} />
             ) : view === 'home' ? (
@@ -1015,7 +1028,7 @@ export default function SupplierHomeScreen() {
             </ScreenOverlay>
 
             <ScreenOverlay visible={showProfile}>
-                <ProfileScreen onClose={() => setShowProfile(false)} />
+                <ProfileScreen onClose={() => setShowProfile(false)} initialShowSettings={profileInitialSettings} />
             </ScreenOverlay>
 
             <ScreenOverlay visible={showAnalytics}>
@@ -1027,6 +1040,15 @@ export default function SupplierHomeScreen() {
                     onClose={() => setShowCitySelect(false)}
                 />
             </ScreenOverlay>
+
+            <Sidebar
+                visible={showSidebar}
+                onClose={() => setShowSidebar(false)}
+                user={user}
+                onNavigate={handleSidebarNavigate}
+                showWorkers={user?.role === 'supplier'}
+                showAnalytics={user?.role === 'supplier'}
+            />
         </View>
     );
 }
@@ -1046,11 +1068,6 @@ const createStyles = (colors) => StyleSheet.create({
     headerIdentity: { flex: 1, minWidth: 0, marginRight: spacing.sm },
     headerName: { fontSize: 18, fontWeight: '700', color: '#fff', maxWidth: 180 },
     headerActions: { flexDirection: 'row', gap: spacing.sm },
-    headerBusinessBtn: {
-        width: 38, height: 38, borderRadius: 19,
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.16)',
-    },
     headerIconBtn: {
         width: 38,
         height: 38,
