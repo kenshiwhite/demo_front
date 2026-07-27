@@ -16,6 +16,7 @@ import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import CartScreen from './CartScreen';
 import ProfileScreen from './ProfileScreen';
+import Sidebar from '../components/Sidebar';
 import ProductDetailScreen from './ProductDetailScreen';
 import { InputField, Button } from '../components/UI';
 import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
@@ -45,6 +46,8 @@ export default function ClientHomeScreen() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showCart, setShowCart] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [profileInitialSettings, setProfileInitialSettings] = useState(false);
     const [quantityModal, setQuantityModal] = useState(false);
     const [selectedProductForCart, setSelectedProductForCart] = useState(null);
     const [cartQuantity, setCartQuantity] = useState('1');
@@ -149,6 +152,16 @@ export default function ClientHomeScreen() {
             loadSupplierProducts(selectedSupplier.id, text);
         } else {
             loadAllProducts(text);
+        }
+    };
+
+    const handleSidebarNavigate = (key) => {
+        if (key === 'profile') {
+            setProfileInitialSettings(false);
+            setShowProfile(true);
+        } else if (key === 'settings') {
+            setProfileInitialSettings(true);
+            setShowProfile(true);
         }
     };
 
@@ -526,9 +539,6 @@ export default function ClientHomeScreen() {
                     <Icon name="chevronRight" size={12} color="rgba(255,255,255,0.8)" />
                 </TouchableOpacity>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowProfile(true)}>
-                        <Icon name="user" size={18} color="#fff" />
-                    </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCart(true)}>
                         <Icon name="cart" size={18} color="#fff" />
                         {getTotalItems() > 0 && (
@@ -539,6 +549,9 @@ export default function ClientHomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowNotifications(true)}>
                         <Icon name="bell" size={18} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowSidebar(true)} accessibilityLabel="Меню">
+                        <Icon name="list" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -941,7 +954,7 @@ export default function ClientHomeScreen() {
             </ScreenOverlay>
 
             <ScreenOverlay visible={showProfile}>
-                <ProfileScreen onClose={() => setShowProfile(false)} />
+                <ProfileScreen onClose={() => setShowProfile(false)} initialShowSettings={profileInitialSettings} />
             </ScreenOverlay>
 
             <ScreenOverlay visible={showCitySelect}>
@@ -954,6 +967,16 @@ export default function ClientHomeScreen() {
                     }}
                 />
             </ScreenOverlay>
+
+            <Sidebar
+                visible={showSidebar}
+                onClose={() => setShowSidebar(false)}
+                user={user}
+                onNavigate={handleSidebarNavigate}
+                showClients={false}
+                showWorkers={false}
+                showAnalytics={false}
+            />
         </View>
     );
 }

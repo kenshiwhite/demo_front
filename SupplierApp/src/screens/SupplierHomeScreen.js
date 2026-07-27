@@ -23,7 +23,8 @@ import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import CalendarScreen from './CalendarScreen';
-import BusinessDirectoryScreen from './BusinessDirectoryScreen';
+import ClientsScreen from './ClientsScreen';
+import WorkersScreen from './WorkersScreen';
 import { ScreenOverlay, CrossFade } from '../components/AnimatedPrimitives';
 
 
@@ -32,7 +33,6 @@ export default function SupplierHomeScreen() {
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { signOut, user } = useAuth();
     const [view, setView] = useState('home');
-    const [requestsSubTab, setRequestsSubTab] = useState('list'); // 'list' | 'clients' — sales_rep only
     const [requests, setRequests] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -47,7 +47,6 @@ export default function SupplierHomeScreen() {
     const [showProfile, setShowProfile] = useState(false);
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
-    const [businessInitialSection, setBusinessInitialSection] = useState('clients');
     const [profileInitialSettings, setProfileInitialSettings] = useState(false);
     const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
@@ -138,11 +137,9 @@ export default function SupplierHomeScreen() {
             setProfileInitialSettings(true);
             setShowProfile(true);
         } else if (key === 'clients') {
-            setBusinessInitialSection('clients');
-            setView('business');
+            setView('clients');
         } else if (key === 'workers') {
-            setBusinessInitialSection('workers');
-            setView('business');
+            setView('workers');
         } else if (key === 'analytics') {
             setShowAnalytics(true);
         }
@@ -541,13 +538,6 @@ export default function SupplierHomeScreen() {
                 </View>
             </View> */}
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={[styles.headerIconBtn, { marginRight: spacing.sm }]}
-                    onPress={() => setShowSidebar(true)}
-                    accessibilityLabel="Меню"
-                >
-                    <Icon name="list" size={20} color="#fff" />
-                </TouchableOpacity>
                 <View style={styles.headerIdentity}>
                     <TouchableOpacity
                         style={styles.citySelector}
@@ -578,6 +568,13 @@ export default function SupplierHomeScreen() {
                             </View>
                         )}
                     </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.headerIconBtn}
+                        onPress={() => setShowSidebar(true)}
+                        accessibilityLabel="Меню"
+                    >
+                        <Icon name="list" size={20} color="#fff" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -606,32 +603,8 @@ export default function SupplierHomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* For sales reps, the Requests tab hosts two sub-tabs: the request
-                list, and their own clients (replacing the separate directory
-                access suppliers get via the header team button). */}
-            {view === 'requests' && user?.role === 'sales_rep' && (
-                <View style={styles.subTabBar}>
-                    <TouchableOpacity
-                        style={[styles.subTab, requestsSubTab === 'list' && styles.subTabActive]}
-                        onPress={() => setRequestsSubTab('list')}
-                    >
-                        <Text style={[styles.subTabText, requestsSubTab === 'list' && styles.subTabTextActive]}>
-                            Заявки
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.subTab, requestsSubTab === 'clients' && styles.subTabActive]}
-                        onPress={() => setRequestsSubTab('clients')}
-                    >
-                        <Text style={[styles.subTabText, requestsSubTab === 'clients' && styles.subTabTextActive]}>
-                            Клиенты
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
             {/* Request filter */}
-            {view === 'requests' && (user?.role !== 'sales_rep' || requestsSubTab === 'list') && (
+            {view === 'requests' && (
                 <View style={styles.filterBar}>
                     {[
                         { key: 'active', label: 'Активные' },
@@ -651,11 +624,11 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
-            <CrossFade activeKey={loading ? 'loading' : `${view}-${requestsSubTab}`} style={{ flex: 1 }}>
-            {view === 'business' ? (
-                <BusinessDirectoryScreen isSupplier={user?.role === 'supplier'} initialSection={businessInitialSection} />
-            ) : view === 'requests' && user?.role === 'sales_rep' && requestsSubTab === 'clients' ? (
-                <BusinessDirectoryScreen isSupplier={false} />
+            <CrossFade activeKey={loading ? 'loading' : view} style={{ flex: 1 }}>
+            {view === 'clients' ? (
+                <ClientsScreen onBack={() => setView('home')} />
+            ) : view === 'workers' ? (
+                <WorkersScreen onBack={() => setView('home')} />
             ) : view === 'home' ? (
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
@@ -1109,22 +1082,6 @@ const createStyles = (colors) => StyleSheet.create({
     },
     tabText: { fontSize: 14, color: colors.textTertiary, fontWeight: '500' },
     tabTextActive: { color: colors.primary, fontWeight: '700' },
-    subTabBar: {
-        flexDirection: 'row',
-        backgroundColor: colors.card,
-        paddingHorizontal: spacing.md,
-        paddingTop: spacing.sm,
-        gap: spacing.sm,
-    },
-    subTab: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.sm,
-        borderRadius: radius.full,
-        backgroundColor: colors.background,
-    },
-    subTabActive: { backgroundColor: colors.primaryLight },
-    subTabText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
-    subTabTextActive: { color: colors.primary },
     filterBar: {
         flexDirection: 'row',
         backgroundColor: colors.card,

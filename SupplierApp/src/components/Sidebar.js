@@ -19,13 +19,16 @@ const MENU_ITEMS = [
     { key: 'settings', label: 'Настройки', icon: 'info' },
 ];
 
-// Slide-in drawer, opens to half the screen width. Reuses the app's
-// existing icons — no new icon assets needed.
-export default function Sidebar({ visible, onClose, user, onNavigate, showWorkers = true, showAnalytics = true }) {
+// Slide-in drawer, opens to half the screen width from the right side.
+// Reuses the app's existing icons — no new icon assets needed.
+export default function Sidebar({
+    visible, onClose, user, onNavigate,
+    showClients = true, showWorkers = true, showAnalytics = true,
+}) {
     const { colors } = useTheme();
     const styles = createStyles(colors);
     const [rendered, setRendered] = useState(visible);
-    const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+    const translateX = useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
     const overlayOpacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -42,7 +45,7 @@ export default function Sidebar({ visible, onClose, user, onNavigate, showWorker
         } else if (rendered) {
             Animated.parallel([
                 Animated.timing(translateX, {
-                    toValue: -SIDEBAR_WIDTH, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true,
+                    toValue: SIDEBAR_WIDTH, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true,
                 }),
                 Animated.timing(overlayOpacity, {
                     toValue: 0, duration: 220, useNativeDriver: true,
@@ -60,6 +63,7 @@ export default function Sidebar({ visible, onClose, user, onNavigate, showWorker
     };
 
     const items = MENU_ITEMS.filter((item) => {
+        if (item.key === 'clients') return showClients;
         if (item.key === 'workers') return showWorkers;
         if (item.key === 'analytics') return showAnalytics;
         return true;
@@ -120,7 +124,7 @@ const createStyles = (colors) => StyleSheet.create({
         position: 'absolute',
         top: 0,
         bottom: 0,
-        left: 0,
+        right: 0,
         width: SIDEBAR_WIDTH,
         backgroundColor: colors.card,
         paddingTop: STATUS_TOP + spacing.md,
