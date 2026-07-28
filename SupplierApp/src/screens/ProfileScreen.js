@@ -186,17 +186,6 @@ export default function ProfileScreen({ onClose, initialShowSettings = false }) 
         );
     };
 
-    const handleLogout = () => {
-        Alert.alert(
-            'Выход',
-            'Вы уверены, что хотите выйти?',
-            [
-                { text: 'Отмена', style: 'cancel' },
-                { text: 'Выйти', style: 'destructive', onPress: signOut }
-            ]
-        );
-    };
-
     const getRoleText = (role) => {
         const roles = { client: 'Клиент', supplier: 'Поставщик', sales_rep: 'Менеджер по продажам', admin: 'Администратор' };
         return roles[role] || role;
@@ -418,16 +407,6 @@ export default function ProfileScreen({ onClose, initialShowSettings = false }) 
                         style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
                     />
                 )}
-
-                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                    <Text style={styles.logoutText}>Выйти из аккаунта</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowSettings(true)}>
-                    <Icon name="info" size={16} color={colors.textSecondary} />
-                    <Text style={styles.settingsText}>{t('profile.settings')}</Text>
-                    <Icon name="chevronRight" size={16} color={colors.textTertiary} />
-                </TouchableOpacity>
 
                 <View style={{ height: 40 }} />
             </ScrollView>

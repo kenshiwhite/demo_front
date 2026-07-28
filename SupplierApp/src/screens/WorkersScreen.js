@@ -10,6 +10,7 @@ import { Button, InputField } from '../components/UI';
 import { radius, spacing, typography, STATUS_TOP } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedListItem } from '../components/AnimatedPrimitives';
+import BottomSheet from '../components/BottomSheet';
 
 const emptyPerson = { username: '', phone: '', email: '', password: '' };
 
@@ -136,7 +137,7 @@ export default function WorkersScreen({ onBack }) {
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color="#fff" />
+                    <Icon name="chevronLeft" size={22} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>Сотрудники</Text>
                 <View style={styles.backBtn} />
@@ -169,8 +170,9 @@ export default function WorkersScreen({ onBack }) {
                 <Text style={styles.fabText}>Добавить сотрудника</Text>
             </TouchableOpacity>
 
-            <Modal visible={personModal} transparent animationType="slide">
-                <View style={styles.overlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
+            <BottomSheet visible={personModal} onClose={() => setPersonModal(false)}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
+                    <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Новый сотрудник</Text>
                     <InputField label="Имя / логин *" value={person.username} onChangeText={v => setPerson(p => ({ ...p, username: v }))} placeholder="Например, Айдана" autoCapitalize="words" />
                     <InputField label="Телефон *" value={person.phone} onChangeText={v => setPerson(p => ({ ...p, phone: v }))} placeholder="+7 700 000 00 00" keyboardType="phone-pad" />
@@ -178,17 +180,15 @@ export default function WorkersScreen({ onBack }) {
                     <InputField label="Временный пароль *" value={person.password} onChangeText={v => setPerson(p => ({ ...p, password: v }))} placeholder="Не менее 8 символов" secureTextEntry />
                     <Button label="Создать учётную запись" onPress={savePerson} loading={saving} />
                     <Button label="Отмена" onPress={() => setPersonModal(false)} variant="ghost" />
-                </ScrollView></KeyboardAvoidingView></View>
-            </Modal>
+                </ScrollView></KeyboardAvoidingView>
+            </BottomSheet>
 
-            <Modal
+            <BottomSheet
                 visible={Boolean(selectedWorker)}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setSelectedWorker(null)}
+                onClose={() => setSelectedWorker(null)}
             >
-                <View style={styles.overlay}>
                     <ScrollView style={styles.modal}>
+                        <View style={styles.modalHandle} />
                         <View style={styles.modalHeader}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
                                 {selectedWorker?.profile_picture ? (
@@ -237,8 +237,7 @@ export default function WorkersScreen({ onBack }) {
                             )) : <Text style={styles.muted}>У сотрудника пока нет закреплённых клиентов.</Text>}
                         </ScrollView>
                     </ScrollView>
-                </View>
-            </Modal>
+            </BottomSheet>
         </View>
     );
 }
@@ -249,13 +248,13 @@ const createStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingTop: STATUS_TOP,
-        paddingBottom: spacing.lg,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.white,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+    pageHeaderTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -273,6 +272,7 @@ const createStyles = (colors) => StyleSheet.create({
     loading: { padding: spacing.xl, textAlign: 'center', color: colors.textSecondary },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
     modal: { backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, maxHeight: '90%' },
+    modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },
     modalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.lg },
     modalTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
     sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: spacing.sm },

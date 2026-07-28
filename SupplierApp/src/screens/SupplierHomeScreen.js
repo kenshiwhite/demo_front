@@ -26,6 +26,7 @@ import CalendarScreen from './CalendarScreen';
 import ClientsScreen from './ClientsScreen';
 import WorkersScreen from './WorkersScreen';
 import { ScreenOverlay, CrossFade } from '../components/AnimatedPrimitives';
+import BottomSheet from '../components/BottomSheet';
 
 
 export default function SupplierHomeScreen() {
@@ -578,30 +579,32 @@ export default function SupplierHomeScreen() {
                 </View>
             </View>
 
-            {/* Tabs */}
-            <View style={styles.tabs}>
-                <TouchableOpacity
-                    style={[styles.tab, view === 'home' && styles.tabActive]}
-                    onPress={() => setView('home')}
-                >
-                    <Icon name="store" size={16} color={view === 'home' ? colors.primary : colors.textTertiary} />
-                    <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>Главная</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, view === 'requests' && styles.tabActive]}
-                    onPress={() => setView('requests')}
-                >
-                    <Icon name="package" size={16} color={view === 'requests' ? colors.primary : colors.textTertiary} />
-                    <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>Заявки</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, view === 'products' && styles.tabActive]}
-                    onPress={() => setView('products')}
-                >
-                    <Icon name="layers" size={16} color={view === 'products' ? colors.primary : colors.textTertiary} />
-                    <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>Товары</Text>
-                </TouchableOpacity>
-            </View>
+            {/* Tabs — hidden while a sub-view (clients/workers) is open; the header above stays visible either way */}
+            {view !== 'clients' && view !== 'workers' && (
+                <View style={styles.tabs}>
+                    <TouchableOpacity
+                        style={[styles.tab, view === 'home' && styles.tabActive]}
+                        onPress={() => setView('home')}
+                    >
+                        <Icon name="store" size={16} color={view === 'home' ? colors.primary : colors.textTertiary} />
+                        <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>Главная</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, view === 'requests' && styles.tabActive]}
+                        onPress={() => setView('requests')}
+                    >
+                        <Icon name="package" size={16} color={view === 'requests' ? colors.primary : colors.textTertiary} />
+                        <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>Заявки</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, view === 'products' && styles.tabActive]}
+                        onPress={() => setView('products')}
+                    >
+                        <Icon name="layers" size={16} color={view === 'products' ? colors.primary : colors.textTertiary} />
+                        <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>Товары</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {/* Request filter */}
             {view === 'requests' && (
@@ -684,9 +687,17 @@ export default function SupplierHomeScreen() {
             )}
 
             {/* Response Modal */}
-            <Modal visible={responseModal} transparent animationType="slide">
+            <BottomSheet
+                visible={responseModal}
+                onClose={() => {
+                    setResponseModal(false);
+                    setSelectedRequest(null);
+                    setMessage('');
+                    setOfferedPrice('');
+                }}
+            >
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                    <View style={styles.modalOverlay}>
+                    <View>
                         <KeyboardAvoidingView
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
@@ -743,13 +754,15 @@ export default function SupplierHomeScreen() {
                         </KeyboardAvoidingView>
                     </View>
                 </TouchableWithoutFeedback>
-            </Modal>
+            </BottomSheet>
 
             {/* Add/Edit Product Modal */}
-            <Modal visible={productModal} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
+            <BottomSheet
+                visible={productModal}
+                onClose={() => { setProductModal(false); setCategoryModal(false); }}
+            >
+                <View>
                     <KeyboardAvoidingView
-                        style={{ flex: 1, justifyContent: 'flex-end' }}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     >
                         <ScrollView
@@ -967,7 +980,7 @@ export default function SupplierHomeScreen() {
                         </View>
                     )}
                 </View>
-            </Modal>
+            </BottomSheet>
 
 
             <ScreenOverlay visible={!!calendarSelectedRequest}>
@@ -1019,6 +1032,7 @@ export default function SupplierHomeScreen() {
                 onClose={() => setShowSidebar(false)}
                 user={user}
                 onNavigate={handleSidebarNavigate}
+                onLogout={signOut}
                 showWorkers={user?.role === 'supplier'}
                 showAnalytics={user?.role === 'supplier'}
             />
@@ -1080,7 +1094,7 @@ const createStyles = (colors) => StyleSheet.create({
         borderBottomWidth: 2,
         borderBottomColor: colors.primary,
     },
-    tabText: { fontSize: 14, color: colors.textTertiary, fontWeight: '500' },
+    tabText: { fontSize: 12, color: colors.textTertiary, fontWeight: '500' },
     tabTextActive: { color: colors.primary, fontWeight: '700' },
     filterBar: {
         flexDirection: 'row',
@@ -1436,15 +1450,16 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         gap: spacing.xs,
         backgroundColor: 'rgba(255,255,255,0.15)',
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 4,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
         borderRadius: radius.full,
+        maxWidth: 160,
         alignSelf: 'flex-start',
         marginBottom: 4,
     },
     cityLabel: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.9)',
+        fontSize: 13,
+        color: '#fff',
         fontWeight: '600',
         maxWidth: 120,
     },

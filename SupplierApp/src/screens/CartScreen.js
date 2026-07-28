@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import { OpenAddressInMap } from '../components/AddressMap';
 import ProductDetailScreen from './ProductDetailScreen';
+import BottomSheet from '../components/BottomSheet';
 
 export default function CartScreen({ onClose }) {
     const { colors } = useTheme();
@@ -218,9 +219,12 @@ export default function CartScreen({ onClose }) {
             )}
 
             {/* Checkout Modal */}
-            <Modal visible={checkoutModal} transparent animationType="slide">
+            <BottomSheet
+                visible={checkoutModal}
+                onClose={() => { Keyboard.dismiss(); setCheckoutModal(false); }}
+            >
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                    <View style={styles.modalOverlay}>
+                    <View>
                         <KeyboardAvoidingView
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
@@ -307,7 +311,7 @@ export default function CartScreen({ onClose }) {
                         </KeyboardAvoidingView>
                     </View>
                 </TouchableWithoutFeedback>
-            </Modal>
+            </BottomSheet>
 
             {selectedProduct && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>

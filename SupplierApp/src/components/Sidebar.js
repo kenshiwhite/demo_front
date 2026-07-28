@@ -22,7 +22,7 @@ const MENU_ITEMS = [
 // Slide-in drawer, opens to half the screen width from the right side.
 // Reuses the app's existing icons — no new icon assets needed.
 export default function Sidebar({
-    visible, onClose, user, onNavigate,
+    visible, onClose, user, onNavigate, onLogout,
     showClients = true, showWorkers = true, showAnalytics = true,
 }) {
     const { colors } = useTheme();
@@ -60,6 +60,11 @@ export default function Sidebar({
     const handleNavigate = (key) => {
         onClose();
         onNavigate(key);
+    };
+
+    const handleLogout = () => {
+        onClose();
+        onLogout?.();
     };
 
     const items = MENU_ITEMS.filter((item) => {
@@ -109,6 +114,23 @@ export default function Sidebar({
                             <Icon name="chevronRight" size={16} color={colors.textTertiary} />
                         </TouchableOpacity>
                     ))}
+                </View>
+
+                <View style={styles.menuDivider} />
+
+                <View style={styles.menu}>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={handleLogout}
+                        activeOpacity={0.7}
+                    >
+                        <View style={[styles.menuIconBox, styles.menuIconBoxDanger]}>
+                            <Icon name="logout" size={18} color={colors.danger} />
+                        </View>
+                        <Text style={[styles.menuLabel, styles.menuLabelDanger]} numberOfLines={1}>
+                            Выйти
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </Animated.View>
         </View>
@@ -168,4 +190,12 @@ const createStyles = (colors) => StyleSheet.create({
         justifyContent: 'center',
     },
     menuLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+    menuDivider: {
+        height: 1,
+        backgroundColor: colors.borderLight,
+        marginVertical: spacing.md,
+        marginHorizontal: spacing.lg,
+    },
+    menuIconBoxDanger: { backgroundColor: colors.danger + '1A' },
+    menuLabelDanger: { color: colors.danger },
 });

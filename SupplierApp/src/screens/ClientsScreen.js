@@ -10,6 +10,7 @@ import { Button, InputField, Badge } from '../components/UI';
 import { radius, spacing, typography, STATUS_TOP } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedListItem } from '../components/AnimatedPrimitives';
+import BottomSheet from '../components/BottomSheet';
 
 const emptyPerson = { name: '', phone: '', email: '', company_name: '', address: '', notes: '', latitude: null, longitude: null };
 
@@ -162,7 +163,7 @@ export default function ClientsScreen({ onBack }) {
                         style={[styles.actionBtn, { backgroundColor: colors.purple }]}
                         onPress={(e) => { e.stopPropagation(); openRequest(item); }}
                     >
-                        <Icon name="plus" size={15} color={colors.primary} />
+                        <Icon name="plus" size={15} color={colors.white} />
                         <Text style={styles.actionBtnText}>Создать заявку</Text>
                     </TouchableOpacity>
                 )}
@@ -174,7 +175,7 @@ export default function ClientsScreen({ onBack }) {
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color="#fff" />
+                    <Icon name="chevronLeft" size={22} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>Клиенты</Text>
                 <View style={styles.backBtn} />
@@ -207,8 +208,9 @@ export default function ClientsScreen({ onBack }) {
                 <Text style={styles.fabText}>Добавить клиента</Text>
             </TouchableOpacity>
 
-            <Modal visible={personModal} transparent animationType="slide">
-                <View style={styles.overlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
+            <BottomSheet visible={personModal} onClose={() => setPersonModal(false)}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
+                    <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Новый клиент</Text>
                     <InputField label="Имя клиента *" value={person.name} onChangeText={v => setPerson(p => ({ ...p, name: v }))} placeholder="Например, Айдана" autoCapitalize="words" />
                     <InputField label="Телефон *" value={person.phone} onChangeText={v => setPerson(p => ({ ...p, phone: v }))} placeholder="+7 700 000 00 00" keyboardType="phone-pad" />
@@ -219,11 +221,12 @@ export default function ClientsScreen({ onBack }) {
                     <InputField label="Заметки" value={person.notes} onChangeText={v => setPerson(p => ({ ...p, notes: v }))} placeholder="Дополнительная информация" multiline numberOfLines={2} autoCapitalize="sentences" />
                     <Button label="Добавить клиента" onPress={savePerson} loading={saving} />
                     <Button label="Отмена" onPress={() => setPersonModal(false)} variant="ghost" />
-                </ScrollView></KeyboardAvoidingView></View>
-            </Modal>
+                </ScrollView></KeyboardAvoidingView>
+            </BottomSheet>
 
-            <Modal visible={requestModal} transparent animationType="slide">
-                <View style={styles.overlay}><KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><View style={styles.modal}>
+            <BottomSheet visible={requestModal} onClose={() => setRequestModal(false)}>
+                <KeyboardAvoidingView style={{ justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><View style={styles.modal}>
+                    <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Заявка для {requestClient?.name}</Text>
                     <Text style={styles.muted}>Доступные остатки вашей компании</Text>
                     <ScrollView style={{ maxHeight: 380 }}>{products.map(product => (
@@ -239,17 +242,15 @@ export default function ClientsScreen({ onBack }) {
                     ))}</ScrollView>
                     <Button label="Создать заявку" onPress={createRequest} loading={saving} />
                     <Button label="Отмена" onPress={() => setRequestModal(false)} variant="ghost" />
-                </View></KeyboardAvoidingView></View>
-            </Modal>
+                </View></KeyboardAvoidingView>
+            </BottomSheet>
 
-            <Modal
+            <BottomSheet
                 visible={Boolean(selectedClient)}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setSelectedClient(null)}
+                onClose={() => setSelectedClient(null)}
             >
-                <View style={styles.overlay}>
                     <ScrollView style={styles.modal}>
+                        <View style={styles.modalHandle} />
                         {selectedClient && (() => {
                             const stats = clientStatsMap[clientKey(selectedClient)] || { totalSpent: 0, totalRequests: 0, fulfilledCount: 0, lastActivity: null };
                             const isRegistered = selectedClient.client_type === 'registered';
@@ -364,8 +365,7 @@ export default function ClientsScreen({ onBack }) {
                             );
                         })()}
                     </ScrollView>
-                </View>
-            </Modal>
+            </BottomSheet>
         </View>
     );
 }
@@ -376,13 +376,13 @@ const createStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingTop: STATUS_TOP,
-        paddingBottom: spacing.lg,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.white,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+    pageHeaderTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -402,6 +402,7 @@ const createStyles = (colors) => StyleSheet.create({
     loading: { padding: spacing.xl, textAlign: 'center', color: colors.textSecondary },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
     modal: { backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, maxHeight: '90%' },
+    modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },
     modalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.lg },
     modalTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
     sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: spacing.sm },

@@ -17,6 +17,7 @@ import RequestDetailScreen from './RequestDetailScreen';
 import CartScreen from './CartScreen';
 import ProfileScreen from './ProfileScreen';
 import Sidebar from '../components/Sidebar';
+import BottomSheet from '../components/BottomSheet';
 import ProductDetailScreen from './ProductDetailScreen';
 import { InputField, Button } from '../components/UI';
 import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
@@ -727,9 +728,12 @@ export default function ClientHomeScreen() {
             </CrossFade>
 
             {/* Quantity Modal */}
-            <Modal visible={quantityModal} transparent animationType="slide">
+            <BottomSheet
+                visible={quantityModal}
+                onClose={() => { Keyboard.dismiss(); setQuantityModal(false); }}
+            >
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                    <View style={styles.modalOverlay}>
+                    <View>
                         <KeyboardAvoidingView
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
@@ -821,12 +825,12 @@ export default function ClientHomeScreen() {
                         </KeyboardAvoidingView>
                     </View>
                 </TouchableWithoutFeedback>
-            </Modal>
+            </BottomSheet>
 
             {/* Filters Modal */}
-            <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
+            <BottomSheet visible={showFilters} onClose={() => setShowFilters(false)}>
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-                    <View style={styles.modalOverlay}>
+                    <View>
                         <View style={[styles.modalContent, { maxHeight: '85%' }]}>
                             <View style={styles.modalHandle} />
                             <View style={styles.filterHeaderRow}>
@@ -912,7 +916,7 @@ export default function ClientHomeScreen() {
                         </View>
                     </View>
                 </TouchableWithoutFeedback>
-            </Modal>
+            </BottomSheet>
 
             {/* Overlays */}
             <ScreenOverlay visible={!!selectedProduct}>
@@ -973,6 +977,7 @@ export default function ClientHomeScreen() {
                 onClose={() => setShowSidebar(false)}
                 user={user}
                 onNavigate={handleSidebarNavigate}
+                onLogout={signOut}
                 showClients={false}
                 showWorkers={false}
                 showAnalytics={false}
