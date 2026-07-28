@@ -11,10 +11,11 @@ import { radius, spacing, typography, STATUS_TOP } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedListItem } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
+import { cityLabel } from '../constants/cities';
 
 const emptyPerson = { username: '', phone: '', email: '', password: '' };
 
-export default function WorkersScreen({ onBack }) {
+export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [workers, setWorkers] = useState([]);
@@ -29,10 +30,11 @@ export default function WorkersScreen({ onBack }) {
     const load = useCallback(async () => {
         setLoading(true);
         try {
+            const cityParams = activeCity ? { city: activeCity } : {};
             const [workersRes, clientsRes, requestsRes] = await Promise.all([
-                client.get('/api/auth/workers/'),
-                client.get('/api/auth/business-clients/'),
-                client.get('/api/requests/'),
+                client.get('/api/auth/workers/', { params: cityParams }),
+                client.get('/api/auth/business-clients/', { params: cityParams }),
+                client.get('/api/requests/', { params: cityParams }),
             ]);
             setWorkers(workersRes.data.results || workersRes.data);
             setClients(clientsRes.data.results || clientsRes.data);
@@ -42,7 +44,7 @@ export default function WorkersScreen({ onBack }) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeCity]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -58,7 +60,7 @@ export default function WorkersScreen({ onBack }) {
         }
         setSaving(true);
         try {
-            await client.post('/api/auth/workers/', person);
+            await client.post('/api/auth/workers/', { ...person, city: activeCity });
             setPersonModal(false);
             await load();
             Alert.alert('Готово', 'Учётная запись сотрудника создана.');
@@ -137,9 +139,11 @@ export default function WorkersScreen({ onBack }) {
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.primary} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.pageHeaderTitle}>Сотрудники</Text>
+                <Text style={styles.pageHeaderTitle}>
+                    Сотрудники{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
+                </Text>
                 <View style={styles.backBtn} />
             </View>
 
@@ -251,10 +255,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: spacing.md,
         paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.white,
+        backgroundColor: colors.primary,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },

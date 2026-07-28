@@ -11,10 +11,11 @@ import { radius, spacing, typography, STATUS_TOP } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedListItem } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
+import { cityLabel } from '../constants/cities';
 
 const emptyPerson = { name: '', phone: '', email: '', company_name: '', address: '', notes: '', latitude: null, longitude: null };
 
-export default function ClientsScreen({ onBack }) {
+export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [clients, setClients] = useState([]);
@@ -32,10 +33,11 @@ export default function ClientsScreen({ onBack }) {
     const load = useCallback(async () => {
         setLoading(true);
         try {
+            const cityParams = activeCity ? { city: activeCity } : {};
             const [clientsRes, productsRes, requestsRes] = await Promise.all([
-                client.get('/api/auth/business-clients/'),
-                client.get('/api/catalog/products/'),
-                client.get('/api/requests/'),
+                client.get('/api/auth/business-clients/', { params: cityParams }),
+                client.get('/api/catalog/products/', { params: cityParams }),
+                client.get('/api/requests/', { params: cityParams }),
             ]);
             setClients(clientsRes.data.results || clientsRes.data);
             setProducts(productsRes.data.results || productsRes.data);
@@ -45,7 +47,7 @@ export default function ClientsScreen({ onBack }) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeCity]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -61,7 +63,7 @@ export default function ClientsScreen({ onBack }) {
         }
         setSaving(true);
         try {
-            await client.post('/api/auth/business-clients/', person);
+            await client.post('/api/auth/business-clients/', { ...person, city: activeCity });
             setPersonModal(false);
             await load();
             Alert.alert('Готово', 'Клиент добавлен в вашу базу.');
@@ -163,7 +165,7 @@ export default function ClientsScreen({ onBack }) {
                         style={[styles.actionBtn, { backgroundColor: colors.purple }]}
                         onPress={(e) => { e.stopPropagation(); openRequest(item); }}
                     >
-                        <Icon name="plus" size={15} color={colors.white} />
+                        <Icon name="plus" size={15} color={colors.primary} />
                         <Text style={styles.actionBtnText}>Создать заявку</Text>
                     </TouchableOpacity>
                 )}
@@ -175,9 +177,11 @@ export default function ClientsScreen({ onBack }) {
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.primary} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.pageHeaderTitle}>Клиенты</Text>
+                <Text style={styles.pageHeaderTitle}>
+                    Клиенты{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
+                </Text>
                 <View style={styles.backBtn} />
             </View>
 
@@ -379,10 +383,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: spacing.md,
         paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.white,
+        backgroundColor: colors.primary,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },

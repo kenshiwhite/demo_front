@@ -27,6 +27,8 @@ import ClientsScreen from './ClientsScreen';
 import WorkersScreen from './WorkersScreen';
 import { ScreenOverlay, CrossFade } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
+import CityPickerSheet from '../components/CityPickerSheet';
+import { cityLabel as lookupCityLabel } from '../constants/cities';
 
 
 export default function SupplierHomeScreen() {
@@ -67,6 +69,14 @@ export default function SupplierHomeScreen() {
     const [unreadCount, setUnreadCount] = useState(0);
     const { selectedCity, cityLabel, selectCity } = useCity();    
     const [showCitySelect, setShowCitySelect] = useState(false);
+    // Which of the supplier's service cities we're currently viewing stock/
+    // clients/workers/requests for. Independent of the client-facing
+    // CityContext above — that's a browsing preference, this is a data
+    // filter, and only matters for suppliers who cover more than one city.
+    const serviceCities = user?.service_cities?.length ? user.service_cities : (user?.city ? [user.city] : []);
+    const [activeCity, setActiveCity] = useState(serviceCities[0] || '');
+    const [showActiveCityPicker, setShowActiveCityPicker] = useState(false);
+    const [showProductCityPicker, setShowProductCityPicker] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -87,7 +97,7 @@ export default function SupplierHomeScreen() {
     useEffect(() => {
         if (view === 'requests') loadRequests();
         else if (view === 'products') loadProducts();
-    }, [view]);
+    }, [view, activeCity]);
 
     useEffect(() => {
         loadUnreadCount();
@@ -109,7 +119,9 @@ export default function SupplierHomeScreen() {
     const loadRequests = async () => {
         setLoading(true);
         try {
-            const response = await client.get('/api/requests/');
+            const response = await client.get('/api/requests/', {
+                params: activeCity ? { city: activeCity } : {},
+            });
             setRequests(response.data.results || response.data);
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось загрузить заявки');
@@ -121,7 +133,9 @@ export default function SupplierHomeScreen() {
     const loadProducts = async () => {
         setLoading(true);
         try {
-            const response = await client.get('/api/catalog/products/');
+            const response = await client.get('/api/catalog/products/', {
+                params: activeCity ? { city: activeCity } : {},
+            });
             setProducts(response.data.results || response.data);
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
@@ -210,12 +224,14 @@ export default function SupplierHomeScreen() {
                 stock_quantity: product.stock_quantity.toString(),
                 is_available: product.is_available,
                 category: product.category || '',
+                city: product.city || activeCity,
             });
         } else {
             setEditingProduct(null);
             setProductForm({
                 name: '', description: '', price: '',
                 unit: '', stock_quantity: '', is_available: true, category: '',
+                city: activeCity,
             });
         }
         setProductImage(null);
@@ -267,6 +283,7 @@ export default function SupplierHomeScreen() {
             formData.append('stock_quantity', parseInt(productForm.stock_quantity) || 0);
             formData.append('is_available', productForm.is_available);
             formData.append('category', productForm.category || 'other');
+            formData.append('city', productForm.city || activeCity);
 
             if (productImage) {
                 formData.append('image', {
@@ -542,14 +559,16 @@ export default function SupplierHomeScreen() {
                 <View style={styles.headerIdentity}>
                     <TouchableOpacity
                         style={styles.citySelector}
-                        onPress={() => setShowCitySelect(true)}
-                        activeOpacity={0.7}
+                        onPress={() => serviceCities.length > 1 && setShowActiveCityPicker(true)}
+                        activeOpacity={serviceCities.length > 1 ? 0.7 : 1}
                     >
                         <Icon name="map_pin" size={12} color="rgba(255,255,255,0.8)" />
                         <Text style={styles.cityLabel} numberOfLines={1}>
-                            {cityLabel || 'Выберите город'}
+                            {lookupCityLabel(activeCity) || 'Выберите город'}
                         </Text>
-                        <Icon name="chevronRight" size={11} color="rgba(255,255,255,0.8)" />
+                        {serviceCities.length > 1 && (
+                            <Icon name="chevronRight" size={11} color="rgba(255,255,255,0.8)" />
+                        )}
                     </TouchableOpacity>
                     <Text style={styles.headerName} numberOfLines={1}>
                         {user?.company_name || user?.username}
@@ -629,9 +648,9 @@ export default function SupplierHomeScreen() {
 
             <CrossFade activeKey={loading ? 'loading' : view} style={{ flex: 1 }}>
             {view === 'clients' ? (
-                <ClientsScreen onBack={() => setView('home')} />
+                <ClientsScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
             ) : view === 'workers' ? (
-                <WorkersScreen onBack={() => setView('home')} />
+                <WorkersScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
             ) : view === 'home' ? (
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
@@ -866,6 +885,24 @@ export default function SupplierHomeScreen() {
                                     <Icon name="chevronRight" size={16} color={colors.textTertiary} />
                                 </TouchableOpacity>
 
+                                {serviceCities.length > 1 && (
+                                    <>
+                                        <SectionTitle label="Город" />
+                                        <TouchableOpacity
+                                            style={styles.categoryPicker}
+                                            onPress={() => setShowProductCityPicker(true)}
+                                        >
+                                            <View style={styles.categoryPickerLeft}>
+                                                <Icon name="map_pin" size={16} color={colors.primary} />
+                                                <Text style={styles.categoryPickerText}>
+                                                    {lookupCityLabel(productForm.city)}
+                                                </Text>
+                                            </View>
+                                            <Icon name="chevronRight" size={16} color={colors.textTertiary} />
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+
                                 <SectionTitle label="Цена и наличие" />
 
                                 <View style={styles.rowInputs}>
@@ -1021,11 +1058,23 @@ export default function SupplierHomeScreen() {
                 <AnalyticsScreen onClose={() => setShowAnalytics(false)} />
             </ScreenOverlay>
 
-            <ScreenOverlay visible={showCitySelect}>
-                <CitySelectScreen
-                    onClose={() => setShowCitySelect(false)}
-                />
-            </ScreenOverlay>
+            <CityPickerSheet
+                visible={showActiveCityPicker}
+                onClose={() => setShowActiveCityPicker(false)}
+                cities={serviceCities}
+                value={activeCity}
+                onSelect={setActiveCity}
+                title="Город для просмотра"
+            />
+
+            <CityPickerSheet
+                visible={showProductCityPicker}
+                onClose={() => setShowProductCityPicker(false)}
+                cities={serviceCities}
+                value={productForm.city}
+                onSelect={(city) => setProductForm(p => ({ ...p, city }))}
+                title="Город товара"
+            />
 
             <Sidebar
                 visible={showSidebar}
