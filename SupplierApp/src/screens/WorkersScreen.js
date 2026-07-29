@@ -139,7 +139,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color="#fff" />
+                    <Icon name="chevronLeft" size={22} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>
                     Сотрудники{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
@@ -255,10 +255,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: spacing.md,
         paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.card,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: colors.primary },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
