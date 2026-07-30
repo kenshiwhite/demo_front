@@ -15,6 +15,7 @@ import Icon from '../components/Icon';
 import { OpenAddressInMap } from '../components/AddressMap';
 import ProductDetailScreen from './ProductDetailScreen';
 import BottomSheet from '../components/BottomSheet';
+import DatePickerSheet from '../components/DatePickerSheet';
 
 export default function CartScreen({ onClose }) {
     const { colors } = useTheme();
@@ -24,6 +25,7 @@ export default function CartScreen({ onClose }) {
     const [checkoutModal, setCheckoutModal] = useState(false);
     const [deliveryAddress, setDeliveryAddress] = useState('');
     const [deliveryDate, setDeliveryDate] = useState('');
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [contactPhone, setContactPhone] = useState('');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
@@ -267,13 +269,13 @@ export default function CartScreen({ onClose }) {
                                         autoCorrect
                                     />
                                     <OpenAddressInMap address={deliveryAddress} />
-                                    <InputField
-                                        label="Желаемая дата доставки"
-                                        value={deliveryDate}
-                                        onChangeText={setDeliveryDate}
-                                        placeholder="ГГГГ-ММ-ДД"
-                                        keyboardType="numeric"
-                                    />
+                                    <Text style={styles.dateFieldLabel}>Желаемая дата доставки</Text>
+                                    <TouchableOpacity style={styles.dateField} onPress={() => setShowDatePicker(true)}>
+                                        <Icon name="calendar" size={16} color={colors.primary} />
+                                        <Text style={[styles.dateFieldText, !deliveryDate && styles.dateFieldPlaceholder]}>
+                                            {deliveryDate || 'Выберите дату'}
+                                        </Text>
+                                    </TouchableOpacity>
                                     <InputField
                                         label="Контактный телефон"
                                         value={contactPhone}
@@ -312,6 +314,14 @@ export default function CartScreen({ onClose }) {
                     </View>
                 </TouchableWithoutFeedback>
             </BottomSheet>
+
+            <DatePickerSheet
+                visible={showDatePicker}
+                onClose={() => setShowDatePicker(false)}
+                value={deliveryDate}
+                onSelect={setDeliveryDate}
+                title="Дата доставки"
+            />
 
             {selectedProduct && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
@@ -491,6 +501,15 @@ const createStyles = (colors) => StyleSheet.create({
     },
     modalTitle: { ...typography.h2, marginBottom: spacing.xs },
     modalSubtitle: { ...typography.bodySmall, color: colors.primary, marginBottom: spacing.xl },
+    dateFieldLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.xs },
+    dateField: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,
+        paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+        backgroundColor: colors.card, marginBottom: spacing.md,
+    },
+    dateFieldText: { fontSize: 15, color: colors.text, fontWeight: '500' },
+    dateFieldPlaceholder: { color: colors.placeholder, fontWeight: '400' },
     orderSummary: {
         backgroundColor: colors.background,
         borderRadius: radius.lg,

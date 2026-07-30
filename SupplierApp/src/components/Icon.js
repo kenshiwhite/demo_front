@@ -6,6 +6,27 @@ import Svg, {
 } from 'react-native-svg';
 
 const icons = {
+    sun: (color, size) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Circle cx="12" cy="12" r="4.5" stroke={color} strokeWidth="1.8"/>
+            <Path d="M12 2v2.5M12 19.5V22M4.22 4.22l1.77 1.77M18.01 18.01l1.77 1.77M2 12h2.5M19.5 12H22M4.22 19.78l1.77-1.77M18.01 5.99l1.77-1.77" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        </Svg>
+    ),
+    moon: (color, size) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </Svg>
+    ),
+    contact_card: (color, size) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Rect x="2.5" y="4.5" width="19" height="15" rx="2.2" stroke={color} strokeWidth="1.8"/>
+            <Circle cx="8.3" cy="11" r="2.1" stroke={color} strokeWidth="1.8"/>
+            <Path d="M5.3 16c.5-1.7 1.7-2.6 3-2.6s2.5.9 3 2.6" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <Line x1="14" y1="9.5" x2="18.5" y2="9.5" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+            <Line x1="14" y1="13" x2="18.5" y2="13" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+            <Line x1="14" y1="16" x2="16.7" y2="16" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        </Svg>
+    ),
     bell: (color, size) => (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
             <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

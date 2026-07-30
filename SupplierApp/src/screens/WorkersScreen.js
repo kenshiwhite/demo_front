@@ -125,7 +125,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                 {item.profile_picture ? (
                     <Image source={{ uri: item.profile_picture }} style={styles.avatar} />
                 ) : (
-                    <View style={[styles.avatar, { backgroundColor: '#EDE9FE' }]}><Icon name="user" size={18} color={colors.purple} /></View>
+                    <View style={[styles.avatar, { backgroundColor: colors.purpleLight }]}><Icon name="user" size={18} color={colors.purple} /></View>
                 )}
                 <View style={{ flex: 1 }}><Text style={styles.name}>{item.username}</Text><Text style={styles.muted}>{item.phone}</Text></View>
                 <Icon name="chevronRight" size={18} color={colors.textTertiary} />
@@ -139,7 +139,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.primary} />
+                    <Icon name="chevronLeft" size={22} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>
                     Сотрудники{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
@@ -198,7 +198,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                                 {selectedWorker?.profile_picture ? (
                                     <Image source={{ uri: selectedWorker.profile_picture }} style={styles.smallAvatar} />
                                 ) : (
-                                    <View style={[styles.smallAvatar, { backgroundColor: '#EDE9FE' }]}>
+                                    <View style={[styles.smallAvatar, { backgroundColor: colors.purpleLight }]}>
                                         <Icon name="user" size={16} color={colors.purple} />
                                     </View>
                                 )}
@@ -258,7 +258,7 @@ const createStyles = (colors) => StyleSheet.create({
         backgroundColor: colors.card,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: colors.primary },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -284,7 +284,7 @@ const createStyles = (colors) => StyleSheet.create({
     statCard: { flex: 1, backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center' },
     statValue: { color: colors.primary, fontSize: 20, fontWeight: '800' },
     statLabel: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
-    revenueCard: { backgroundColor: '#ECFDF5', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
+    revenueCard: { backgroundColor: colors.successLight, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
     revenueValue: { color: colors.success, fontSize: 20, fontWeight: '800', marginTop: 3 },
     workerClients: { maxHeight: 260 },
     workerClientsContent: { gap: spacing.sm, paddingBottom: spacing.sm },

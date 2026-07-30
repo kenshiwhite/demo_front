@@ -76,11 +76,11 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
 
     const getStatusConfig = (status) => {
         const configs = {
-            pending: { label: 'Ожидает', color: colors.warning, bg: '#FEF3C7', icon: 'clock' },
-            accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
-            declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
-            fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
-            cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
+            pending: { label: 'Ожидает', color: colors.warning, bg: colors.warningLight, icon: 'clock' },
+            accepted: { label: 'Принято', color: colors.success, bg: colors.successLight, icon: 'check' },
+            declined: { label: 'Отклонено', color: colors.danger, bg: colors.dangerLight, icon: 'x' },
+            fulfilled: { label: 'Выполнено', color: colors.purple, bg: colors.purpleLight, icon: 'truck' },
+            cancelled: { label: 'Отменено', color: colors.danger, bg: colors.dangerLight, icon: 'x' },
         };
         return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };
@@ -544,10 +544,10 @@ const createStyles = (colors) => StyleSheet.create({
         marginHorizontal: spacing.lg,
         marginBottom: spacing.md,
         padding: spacing.lg,
-        backgroundColor: '#FEF2F2',
+        backgroundColor: colors.dangerLight,
         borderRadius: radius.lg,
         borderWidth: 1,
-        borderColor: '#FCA5A5',
+        borderColor: colors.danger,
     },
     cancelRequestText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
     responseText: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.md },
@@ -555,7 +555,7 @@ const createStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#DCFCE7',
+        backgroundColor: colors.successLight,
         borderRadius: radius.md,
         padding: spacing.md,
         marginBottom: spacing.md,

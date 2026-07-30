@@ -11,6 +11,7 @@ import { radius, spacing, typography, STATUS_TOP } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedListItem } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
+import DatePickerSheet from '../components/DatePickerSheet';
 import { cityLabel } from '../constants/cities';
 
 const emptyPerson = { name: '', phone: '', email: '', company_name: '', address: '', notes: '', latitude: null, longitude: null };
@@ -26,6 +27,8 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
     const [requestModal, setRequestModal] = useState(false);
     const [person, setPerson] = useState(emptyPerson);
     const [requestClient, setRequestClient] = useState(null);
+    const [deliveryDate, setDeliveryDate] = useState('');
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [quantities, setQuantities] = useState({});
     const [saving, setSaving] = useState(false);
     const [selectedClient, setSelectedClient] = useState(null);
@@ -77,6 +80,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
     const openRequest = (customer) => {
         setRequestClient(customer);
         setQuantities({});
+        setDeliveryDate('');
         setRequestModal(true);
     };
 
@@ -93,7 +97,11 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
         }
         setSaving(true);
         try {
-            await client.post('/api/requests/', { business_client_id: requestClient.id, items });
+            await client.post('/api/requests/', {
+                business_client_id: requestClient.id,
+                items,
+                desired_delivery_date: deliveryDate || null,
+            });
             setRequestModal(false);
             Alert.alert('Заявка создана', `Заявка для ${requestClient.name} сохранена.`);
             load();
@@ -165,7 +173,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                         style={[styles.actionBtn, { backgroundColor: colors.purple }]}
                         onPress={(e) => { e.stopPropagation(); openRequest(item); }}
                     >
-                        <Icon name="plus" size={15} color={colors.primary} />
+                        <Icon name="plus" size={15} color={colors.white} />
                         <Text style={styles.actionBtnText}>Создать заявку</Text>
                     </TouchableOpacity>
                 )}
@@ -177,7 +185,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.primary} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>
                     Клиенты{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
@@ -229,11 +237,11 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
             </BottomSheet>
 
             <BottomSheet visible={requestModal} onClose={() => setRequestModal(false)}>
-                <KeyboardAvoidingView style={{ justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><View style={styles.modal}>
+                <KeyboardAvoidingView style={{ justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><View style={[styles.modal, styles.requestModal]}>
                     <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Заявка для {requestClient?.name}</Text>
                     <Text style={styles.muted}>Доступные остатки вашей компании</Text>
-                    <ScrollView style={{ maxHeight: 380 }}>{products.map(product => (
+                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }} showsVerticalScrollIndicator={false}>{products.map(product => (
                         <View key={product.id} style={styles.productRow}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.name}>{product.name}</Text>
@@ -244,10 +252,25 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                             <TouchableOpacity style={styles.qtyBtn} disabled={(quantities[product.id] || 0) >= product.stock_quantity} onPress={() => changeQuantity(product.id, 1)}><Icon name="plus" size={15} color={colors.primary} /></TouchableOpacity>
                         </View>
                     ))}</ScrollView>
+                    <Text style={styles.fieldLabel}>Желаемая дата доставки</Text>
+                    <TouchableOpacity style={styles.dateField} onPress={() => setShowDatePicker(true)}>
+                        <Icon name="calendar" size={16} color={colors.primary} />
+                        <Text style={[styles.dateFieldText, !deliveryDate && styles.dateFieldPlaceholder]}>
+                            {deliveryDate || 'Выберите дату'}
+                        </Text>
+                    </TouchableOpacity>
                     <Button label="Создать заявку" onPress={createRequest} loading={saving} />
                     <Button label="Отмена" onPress={() => setRequestModal(false)} variant="ghost" />
                 </View></KeyboardAvoidingView>
             </BottomSheet>
+
+            <DatePickerSheet
+                visible={showDatePicker}
+                onClose={() => setShowDatePicker(false)}
+                value={deliveryDate}
+                onSelect={setDeliveryDate}
+                title="Дата доставки"
+            />
 
             <BottomSheet
                 visible={Boolean(selectedClient)}
@@ -386,7 +409,7 @@ const createStyles = (colors) => StyleSheet.create({
         backgroundColor: colors.card,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: colors.primary },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -406,7 +429,17 @@ const createStyles = (colors) => StyleSheet.create({
     loading: { padding: spacing.xl, textAlign: 'center', color: colors.textSecondary },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
     modal: { backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, maxHeight: '90%' },
+    requestModal: { height: '82%', paddingBottom: spacing.xl },
     modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },
+    fieldLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.xs },
+    dateField: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,
+        paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+        backgroundColor: colors.card, marginBottom: spacing.md,
+    },
+    dateFieldText: { fontSize: 15, color: colors.text, fontWeight: '500' },
+    dateFieldPlaceholder: { color: colors.placeholder, fontWeight: '400' },
     modalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.lg },
     modalTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
     sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: spacing.sm },
@@ -414,7 +447,7 @@ const createStyles = (colors) => StyleSheet.create({
     statCard: { flex: 1, backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center' },
     statValue: { color: colors.primary, fontSize: 20, fontWeight: '800' },
     statLabel: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
-    revenueCard: { backgroundColor: '#ECFDF5', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
+    revenueCard: { backgroundColor: colors.successLight, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
     revenueValue: { color: colors.success, fontSize: 20, fontWeight: '800', marginTop: 3 },
     productRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
     qtyBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
@@ -439,7 +472,7 @@ const createStyles = (colors) => StyleSheet.create({
         paddingHorizontal: spacing.sm,
         paddingVertical: 4,
     },
-    verifyChipActive: { backgroundColor: '#ECFDF5' },
+    verifyChipActive: { backgroundColor: colors.successLight },
     verifyChipText: { fontSize: 11, color: colors.textTertiary, fontWeight: '600' },
     contactRow: {
         flexDirection: 'row',

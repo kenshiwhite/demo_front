@@ -350,7 +350,7 @@ export default function ProfileScreen({ onClose, initialShowSettings = false }) 
                         <Text style={styles.fieldLabel}>Статус</Text>
                         <View style={[
                             styles.statusBadge,
-                            { backgroundColor: user?.is_email_verified ? '#DCFCE7' : '#FEF3C7' }
+                            { backgroundColor: user?.is_email_verified ? colors.successLight : colors.warningLight }
                         ]}>
                             <Text style={[
                                 styles.statusBadgeText,
@@ -577,7 +577,7 @@ const createStyles = (colors) => StyleSheet.create({
         borderColor: colors.border,
     },
     avatarActionText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
-    username: { ...typography.h2, marginBottom: spacing.sm },
+    username: { ...typography.h2, marginBottom: spacing.sm, color: colors.text, textAlign: 'center' },
     roleBadge: {
         backgroundColor: colors.primaryLight,
         paddingHorizontal: spacing.lg,
@@ -587,7 +587,7 @@ const createStyles = (colors) => StyleSheet.create({
     },
     roleText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
     unverifiedBadge: {
-        backgroundColor: '#FEF3C7',
+        backgroundColor: colors.warningLight,
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.xs,
         borderRadius: radius.full,
@@ -624,7 +624,7 @@ const createStyles = (colors) => StyleSheet.create({
         marginHorizontal: spacing.lg,
         marginBottom: spacing.md,
         padding: spacing.lg,
-        backgroundColor: '#FEF2F2',
+        backgroundColor: colors.dangerLight,
         borderRadius: radius.lg,
         alignItems: 'center',
     },

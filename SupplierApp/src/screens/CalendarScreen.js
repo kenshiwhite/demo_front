@@ -232,6 +232,7 @@ export default function CalendarScreen({ onClose, userRole }) {
                             onDayPress={handleDayPress}
                             markedDates={markedDates}
                             markingType="multi-dot"
+                            firstDay={1}
                             theme={{
                                 backgroundColor: colors.card,
                                 calendarBackground: colors.card,

@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, ActivityIndicator, Dimensions
 } from 'react-native';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import client from '../api/client';
+import { useTheme } from '../context/ThemeContext';
+import { STATUS_TOP } from '../styles/theme';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function AnalyticsScreen({ onClose }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState(30);
@@ -18,6 +22,19 @@ export default function AnalyticsScreen({ onClose }) {
         { label: '30 дней', value: 30 },
         { label: '3 месяца', value: 90 },
         { label: 'Всё время', value: 365 },
+    ];
+
+    // Status colors intentionally stay on the fixed semantic palette
+    // (success/warning/danger/purple) rather than text/background tokens —
+    // these are meant to read the same regardless of light/dark mode, same
+    // as a traffic light. They're still pulled from `colors` so dark mode's
+    // slightly brighter semantic shades apply.
+    const statuses = [
+        { key: 'pending', label: 'Ожидает', color: colors.warning },
+        { key: 'accepted', label: 'Принято', color: colors.success },
+        { key: 'fulfilled', label: 'Выполнено', color: colors.purple },
+        { key: 'declined', label: 'Отклонено', color: colors.danger },
+        { key: 'cancelled', label: 'Отменено', color: colors.danger },
     ];
 
     useEffect(() => {
@@ -36,18 +53,24 @@ export default function AnalyticsScreen({ onClose }) {
         }
     };
 
+    const hexToRgb = (hex) => {
+        const clean = hex.replace('#', '');
+        const bigint = parseInt(clean, 16);
+        return `${(bigint >> 16) & 255}, ${(bigint >> 8) & 255}, ${bigint & 255}`;
+    };
+
     const chartConfig = {
-        backgroundColor: '#fff',
-        backgroundGradientFrom: '#fff',
-        backgroundGradientTo: '#fff',
+        backgroundColor: colors.card,
+        backgroundGradientFrom: colors.card,
+        backgroundGradientTo: colors.card,
         decimalPlaces: 0,
-        color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
-        labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
+        color: (opacity = 1) => `rgba(${hexToRgb(colors.primary)}, ${opacity})`,
+        labelColor: (opacity = 1) => `rgba(${hexToRgb(colors.textSecondary)}, ${opacity})`,
         style: { borderRadius: 16 },
         propsForDots: {
             r: '4',
             strokeWidth: '2',
-            stroke: '#4F46E5',
+            stroke: colors.primary,
         },
     };
 
@@ -61,7 +84,7 @@ export default function AnalyticsScreen({ onClose }) {
             }),
             datasets: [{
                 data: days.map(d => d.revenue),
-                color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                color: (opacity = 1) => `rgba(${hexToRgb(colors.primary)}, ${opacity})`,
                 strokeWidth: 2,
             }],
         };
@@ -109,7 +132,7 @@ export default function AnalyticsScreen({ onClose }) {
 
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#4F46E5" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                     <Text style={styles.loadingText}>Загрузка данных...</Text>
                 </View>
             ) : (
@@ -117,21 +140,21 @@ export default function AnalyticsScreen({ onClose }) {
 
                     {/* Stats cards */}
                     <View style={styles.statsGrid}>
-                        <View style={[styles.statCard, { backgroundColor: '#4F46E5' }]}>
+                        <View style={[styles.statCard, { backgroundColor: colors.primary }]}>
                             <Text style={styles.statLabel}>Выручка</Text>
                             <Text style={styles.statValue}>
                                 {parseInt(data?.total_revenue || 0).toLocaleString('ru-RU')} ₸
                             </Text>
                         </View>
-                        <View style={[styles.statCard, { backgroundColor: '#10B981' }]}>
+                        <View style={[styles.statCard, { backgroundColor: colors.success }]}>
                             <Text style={styles.statLabel}>Заказов</Text>
                             <Text style={styles.statValue}>{data?.total_orders || 0}</Text>
                         </View>
-                        <View style={[styles.statCard, { backgroundColor: '#F59E0B' }]}>
+                        <View style={[styles.statCard, { backgroundColor: colors.warning }]}>
                             <Text style={styles.statLabel}>Ожидает</Text>
                             <Text style={styles.statValue}>{data?.pending_requests || 0}</Text>
                         </View>
-                        <View style={[styles.statCard, { backgroundColor: '#6366F1' }]}>
+                        <View style={[styles.statCard, { backgroundColor: colors.purple }]}>
                             <Text style={styles.statLabel}>Ср. заказ</Text>
                             <Text style={styles.statValue}>
                                 {parseInt(data?.avg_order_value || 0).toLocaleString('ru-RU')} ₸
@@ -192,13 +215,7 @@ export default function AnalyticsScreen({ onClose }) {
                     {/* Orders by status */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Статусы заявок</Text>
-                        {[
-                            { key: 'pending', label: 'Ожидает', color: '#F59E0B' },
-                            { key: 'accepted', label: 'Принято', color: '#10B981' },
-                            { key: 'fulfilled', label: 'Выполнено', color: '#6366F1' },
-                            { key: 'declined', label: 'Отклонено', color: '#EF4444' },
-                            { key: 'cancelled', label: 'Отменено', color: '#EF4444' },
-                        ].map(s => {
+                        {statuses.map(s => {
                             const count = data?.status_counts?.[s.key] || 0;
                             const total = Object.values(data?.status_counts || {}).reduce((a, b) => a + b, 0);
                             const percent = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -301,35 +318,35 @@ export default function AnalyticsScreen({ onClose }) {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+const createStyles = (colors) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
-        paddingTop: 56,
-        backgroundColor: '#4F46E5',
+        paddingTop: STATUS_TOP,
+        backgroundColor: colors.primary,
     },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
     back: { color: '#fff', fontSize: 14 },
     periodBar: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         padding: 8,
         gap: 6,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.borderLight,
     },
     periodBtn: {
         flex: 1,
         padding: 8,
         borderRadius: 8,
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.background,
     },
-    periodBtnActive: { backgroundColor: '#4F46E5' },
-    periodBtnText: { fontSize: 12, color: '#666', fontWeight: '600' },
+    periodBtnActive: { backgroundColor: colors.primary },
+    periodBtnText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
     periodBtnTextActive: { color: '#fff' },
     loadingContainer: {
         flex: 1,
@@ -337,7 +354,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    loadingText: { color: '#666', fontSize: 15 },
+    loadingText: { color: colors.textSecondary, fontSize: 15 },
     body: { flex: 1 },
     statsGrid: {
         flexDirection: 'row',
@@ -365,7 +382,7 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     chartCard: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 12,
         padding: 16,
         marginHorizontal: 12,
@@ -378,12 +395,12 @@ const styles = StyleSheet.create({
     chartTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1a1a1a',
+        color: colors.text,
         marginBottom: 4,
     },
     chartSubtitle: {
         fontSize: 13,
-        color: '#666',
+        color: colors.textSecondary,
         marginBottom: 12,
     },
     chart: {
@@ -391,7 +408,7 @@ const styles = StyleSheet.create({
         marginLeft: -16,
     },
     emptyChart: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 12,
         padding: 32,
         marginHorizontal: 12,
@@ -399,12 +416,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     emptyChartText: {
-        color: '#999',
+        color: colors.textTertiary,
         fontSize: 14,
         textAlign: 'center',
     },
     section: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 12,
         padding: 16,
         marginHorizontal: 12,
@@ -417,12 +434,12 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#4F46E5',
+        color: colors.primary,
         marginBottom: 16,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    sectionSubtitle: { fontSize: 12, color: '#666', marginTop: -10, marginBottom: 12 },
+    sectionSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: -10, marginBottom: 12 },
     statusRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -440,7 +457,7 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         marginRight: 8,
     },
-    statusLabel: { fontSize: 14, color: '#444' },
+    statusLabel: { fontSize: 14, color: colors.textSecondary },
     statusRight: {
         flex: 1,
         flexDirection: 'row',
@@ -451,7 +468,7 @@ const styles = StyleSheet.create({
     progressBar: {
         flex: 1,
         height: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.borderLight,
         borderRadius: 4,
         overflow: 'hidden',
     },
@@ -462,60 +479,60 @@ const styles = StyleSheet.create({
     statusCount: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#1a1a1a',
+        color: colors.text,
         minWidth: 24,
         textAlign: 'right',
     },
     salesRepRow: {
         flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
-        borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0',
+        borderBottomWidth: 0.5, borderBottomColor: colors.borderLight,
     },
     salesRepAvatar: {
-        width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF',
+        width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryLight,
         alignItems: 'center', justifyContent: 'center', marginRight: 10,
     },
-    salesRepAvatarText: { color: '#4F46E5', fontSize: 15, fontWeight: '700' },
+    salesRepAvatarText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
     salesRepInfo: { flex: 1 },
-    salesRepName: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
-    salesRepDetail: { fontSize: 11, color: '#666', marginTop: 2 },
-    salesRepRevenue: { fontSize: 13, fontWeight: '700', color: '#10B981', marginLeft: 8 },
+    salesRepName: { fontSize: 14, fontWeight: '700', color: colors.text },
+    salesRepDetail: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+    salesRepRevenue: { fontSize: 13, fontWeight: '700', color: colors.success, marginLeft: 8 },
     productRow: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 10,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.borderLight,
     },
     productRank: {
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#4F46E5',
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
     rankText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
     productInfo: { flex: 1 },
-    productName: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-    productDetail: { fontSize: 12, color: '#666', marginTop: 2 },
-    productRevenue: { fontSize: 14, fontWeight: '600', color: '#4F46E5' },
+    productName: { fontSize: 14, fontWeight: '600', color: colors.text },
+    productDetail: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    productRevenue: { fontSize: 14, fontWeight: '600', color: colors.primary },
     summaryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingVertical: 8,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.borderLight,
     },
-    summaryLabel: { fontSize: 14, color: '#666' },
-    summaryValue: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+    summaryLabel: { fontSize: 14, color: colors.textSecondary },
+    summaryValue: { fontSize: 14, fontWeight: '600', color: colors.text },
     summaryTotal: {
         borderBottomWidth: 0,
         marginTop: 4,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: colors.borderLight,
     },
-    summaryTotalLabel: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-    summaryTotalValue: { fontSize: 18, fontWeight: 'bold', color: '#4F46E5' },
+    summaryTotalLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+    summaryTotalValue: { fontSize: 18, fontWeight: 'bold', color: colors.primary },
 });

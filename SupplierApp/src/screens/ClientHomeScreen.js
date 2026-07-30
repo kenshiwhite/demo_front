@@ -247,11 +247,11 @@ export default function ClientHomeScreen() {
 
     const getStatusConfig = (status) => {
         const configs = {
-            pending: { label: 'Ожидает', color: colors.warning, bg: '#FEF3C7', icon: 'clock' },
-            accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
-            declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
-            fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
-            cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
+            pending: { label: 'Ожидает', color: colors.warning, bg: colors.warningLight, icon: 'clock' },
+            accepted: { label: 'Принято', color: colors.success, bg: colors.successLight, icon: 'check' },
+            declined: { label: 'Отклонено', color: colors.danger, bg: colors.dangerLight, icon: 'x' },
+            fulfilled: { label: 'Выполнено', color: colors.purple, bg: colors.purpleLight, icon: 'truck' },
+            cancelled: { label: 'Отменено', color: colors.danger, bg: colors.dangerLight, icon: 'x' },
         };
         return configs[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' };
     };
@@ -1338,7 +1338,7 @@ const createStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.xs,
-        backgroundColor: '#FEF3C7',
+        backgroundColor: colors.warningLight,
         borderRadius: radius.md,
         padding: spacing.sm,
         marginBottom: spacing.sm,
@@ -1348,7 +1348,7 @@ const createStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.xs,
-        backgroundColor: '#DCFCE7',
+        backgroundColor: colors.successLight,
         borderRadius: radius.md,
         padding: spacing.sm,
         marginBottom: spacing.sm,

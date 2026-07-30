@@ -64,11 +64,11 @@ export default function SupplierHomeTab({ onRequestPress }) {
     }[status] || colors.textSecondary);
 
     const getStatusConfig = (status) => ({
-        pending: { label: 'Ожидает', color: colors.warning, bg: '#FEF3C7', icon: 'clock' },
-        accepted: { label: 'Принято', color: colors.success, bg: '#DCFCE7', icon: 'check' },
-        declined: { label: 'Отклонено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
-        fulfilled: { label: 'Выполнено', color: colors.purple, bg: '#EDE9FE', icon: 'truck' },
-        cancelled: { label: 'Отменено', color: colors.danger, bg: '#FEE2E2', icon: 'x' },
+        pending: { label: 'Ожидает', color: colors.warning, bg: colors.warningLight, icon: 'clock' },
+        accepted: { label: 'Принято', color: colors.success, bg: colors.successLight, icon: 'check' },
+        declined: { label: 'Отклонено', color: colors.danger, bg: colors.dangerLight, icon: 'x' },
+        fulfilled: { label: 'Выполнено', color: colors.purple, bg: colors.purpleLight, icon: 'truck' },
+        cancelled: { label: 'Отменено', color: colors.danger, bg: colors.dangerLight, icon: 'x' },
     }[status] || { label: status, color: colors.textSecondary, bg: colors.borderLight, icon: 'info' });
 
     const buildCalendarData = (data) => {
@@ -119,10 +119,10 @@ export default function SupplierHomeTab({ onRequestPress }) {
     };
 
     const getStockStatus = (qty) => {
-        if (qty === 0) return { label: 'Нет товара', color: colors.danger, bg: '#FEE2E2', icon: 'warning' };
-        if (qty <= 5) return { label: 'Критично', color: colors.danger, bg: '#FEE2E2', icon: 'warning' };
-        if (qty <= 20) return { label: 'Мало товара', color: colors.warning, bg: '#FEF3C7', icon: 'warning' };
-        return { label: 'В норме', color: colors.success, bg: '#DCFCE7', icon: 'check' };
+        if (qty === 0) return { label: 'Нет товара', color: colors.danger, bg: colors.dangerLight, icon: 'warning' };
+        if (qty <= 5) return { label: 'Критично', color: colors.danger, bg: colors.dangerLight, icon: 'warning' };
+        if (qty <= 20) return { label: 'Мало товара', color: colors.warning, bg: colors.warningLight, icon: 'warning' };
+        return { label: 'В норме', color: colors.success, bg: colors.successLight, icon: 'check' };
     };
 
     const selectedDateRequests = selectedDate ? (requestsByDate[selectedDate] || []) : [];
@@ -152,7 +152,7 @@ export default function SupplierHomeTab({ onRequestPress }) {
                 {lowStockProducts.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <View style={[styles.sectionIconBox, { backgroundColor: '#FEF3C7' }]}>
+                            <View style={[styles.sectionIconBox, { backgroundColor: colors.warningLight }]}>
                                 <Icon name="warning" size={16} color={colors.warning} />
                             </View>
                             <View style={{ flex: 1 }}>
@@ -253,7 +253,7 @@ export default function SupplierHomeTab({ onRequestPress }) {
                 {/* Calendar */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconBox, { backgroundColor: '#EDE9FE' }]}>
+                        <View style={[styles.sectionIconBox, { backgroundColor: colors.purpleLight }]}>
                             <Icon name="calendar" size={16} color={colors.purple} />
                         </View>
                         <View style={{ flex: 1 }}>

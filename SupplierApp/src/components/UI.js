@@ -188,7 +188,7 @@ const createStyles = (colors) => StyleSheet.create({
         color: colors.textSecondary,
     },
     input: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.card,
         borderWidth: 1.5,
         borderColor: colors.border,
         borderRadius: radius.md,

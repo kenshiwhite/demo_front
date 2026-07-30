@@ -83,8 +83,8 @@ export default function SettingsScreen({ onClose }) {
                 <Text style={styles.sectionLabel}>{t('settings.theme')}</Text>
                 <View style={styles.card}>
                     {[
-                        { key: 'light', label: t('settings.theme.light'), icon: 'eye' },
-                        { key: 'dark', label: t('settings.theme.dark'), icon: 'eye' },
+                        { key: 'light', label: t('settings.theme.light'), icon: 'sun' },
+                        { key: 'dark', label: t('settings.theme.dark'), icon: 'moon' },
                     ].map((opt, index, arr) => {
                         const active = mode === opt.key;
                         return (
@@ -96,7 +96,10 @@ export default function SettingsScreen({ onClose }) {
                                 ]}
                                 onPress={() => setThemeMode(opt.key)}
                             >
-                                <Text style={styles.optionText}>{opt.label}</Text>
+                                <View style={styles.optionLeft}>
+                                    <Icon name={opt.icon} size={18} color={active ? colors.primary : colors.textSecondary} />
+                                    <Text style={styles.optionText}>{opt.label}</Text>
+                                </View>
                                 <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
                                     {active && <View style={styles.radioInner} />}
                                 </View>
@@ -170,6 +173,7 @@ const createStyles = (colors) => StyleSheet.create({
         borderBottomColor: colors.borderLight,
     },
     optionText: { fontSize: 15, color: colors.text, fontWeight: '500' },
+    optionLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     radioOuter: {
         width: 22,
         height: 22,

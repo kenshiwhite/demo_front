@@ -13,7 +13,7 @@ const SIDEBAR_WIDTH = Math.round(screenWidth * 0.5);
 
 const MENU_ITEMS = [
     { key: 'profile', label: 'Профиль', icon: 'user' },
-    { key: 'clients', label: 'Клиенты', icon: 'building' },
+    { key: 'clients', label: 'Клиенты', icon: 'contact_card' },
     { key: 'workers', label: 'Сотрудники', icon: 'team' },
     { key: 'analytics', label: 'Аналитика', icon: 'bar_chart' },
     { key: 'settings', label: 'Настройки', icon: 'info' },
