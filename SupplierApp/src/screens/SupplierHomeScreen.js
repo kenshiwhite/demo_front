@@ -76,6 +76,7 @@ export default function SupplierHomeScreen() {
     const serviceCities = user?.service_cities?.length ? user.service_cities : (user?.city ? [user.city] : []);
     const [activeCity, setActiveCity] = useState(serviceCities[0] || '');
     const [showActiveCityPicker, setShowActiveCityPicker] = useState(false);
+    const [productViewMode, setProductViewMode] = useState('cards'); // 'cards' | 'rows'
     const [showProductCityPicker, setShowProductCityPicker] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -508,6 +509,54 @@ export default function SupplierHomeScreen() {
         );
     };
 
+    const renderProductRow = ({ item }) => {
+        const isLowStock = item.stock_quantity > 0 && item.stock_quantity <= 10;
+        const isOutOfStock = item.stock_quantity === 0;
+
+        return (
+            <View style={styles.productRowCard}>
+                {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.productRowImage} resizeMode="cover" />
+                ) : (
+                    <View style={styles.productRowImagePlaceholder}>
+                        <Icon name="image" size={18} color={colors.textTertiary} />
+                    </View>
+                )}
+                <View style={styles.productRowBody}>
+                    <Text style={styles.productRowName} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
+                    <View style={styles.productRowMeta}>
+                        <Text style={styles.productRowPrice} numberOfLines={1} ellipsizeMode="tail">
+                            {parseInt(item.price).toLocaleString('ru-RU')} ₸<Text style={styles.productUnit}> / {item.unit}</Text>
+                        </Text>
+                        <Text style={[
+                            styles.productRowStock,
+                            isOutOfStock && { color: colors.danger },
+                            isLowStock && { color: colors.warning },
+                            !isOutOfStock && !isLowStock && { color: colors.success },
+                        ]} numberOfLines={1} ellipsizeMode="tail">
+                            {isOutOfStock ? 'Нет на складе' : `${item.stock_quantity} ${item.unit}`}
+                        </Text>
+                    </View>
+                </View>
+                <TouchableOpacity
+                    disabled={user?.role !== 'supplier'}
+                    style={[
+                        styles.productRowAvailability,
+                        { backgroundColor: item.is_available ? colors.successLight : colors.dangerLight }
+                    ]}
+                    onPress={() => handleToggleAvailability(item)}
+                >
+                    <View style={[styles.availabilityDot, { backgroundColor: item.is_available ? colors.success : colors.danger }]} />
+                </TouchableOpacity>
+                {user?.role === 'supplier' && (
+                    <TouchableOpacity style={styles.productRowEditBtn} onPress={() => openProductModal(item)}>
+                        <Icon name="edit" size={15} color={colors.primary} />
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -646,6 +695,25 @@ export default function SupplierHomeScreen() {
                 </View>
             )}
 
+            {/* Product view mode toggle */}
+            {view === 'products' && (
+                <View style={styles.filterBar}>
+                    <View style={{ flex: 1 }} />
+                    <TouchableOpacity
+                        style={[styles.viewModeBtn, productViewMode === 'cards' && styles.viewModeBtnActive]}
+                        onPress={() => setProductViewMode('cards')}
+                    >
+                        <Icon name="layers" size={16} color={productViewMode === 'cards' ? colors.primary : colors.textTertiary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.viewModeBtn, productViewMode === 'rows' && styles.viewModeBtnActive]}
+                        onPress={() => setProductViewMode('rows')}
+                    >
+                        <Icon name="list" size={16} color={productViewMode === 'rows' ? colors.primary : colors.textTertiary} />
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <CrossFade activeKey={loading ? 'loading' : view} style={{ flex: 1 }}>
             {view === 'clients' ? (
                 <ClientsScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
@@ -662,9 +730,10 @@ export default function SupplierHomeScreen() {
                 </View>
             ) : (
                 <FlatList
+                    key={view === 'requests' ? 'requests-list' : `products-${productViewMode}`}
                     data={view === 'requests' ? filteredRequests : products}
                     keyExtractor={(item) => item.id.toString()}
-                    renderItem={view === 'requests' ? renderRequest : renderProduct}
+                    renderItem={view === 'requests' ? renderRequest : productViewMode === 'rows' ? renderProductRow : renderProduct}
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
@@ -1247,6 +1316,53 @@ const createStyles = (colors) => StyleSheet.create({
         marginBottom: spacing.md,
         overflow: 'hidden',
         ...shadow.sm,
+    },
+    viewModeBtn: {
+        width: 40,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.md,
+        alignItems: 'center',
+        backgroundColor: colors.background,
+    },
+    viewModeBtnActive: { backgroundColor: colors.primaryLight },
+    productRowCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 72,
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+        gap: spacing.sm,
+        overflow: 'hidden',
+        ...shadow.sm,
+    },
+    productRowImage: { width: 48, height: 48, borderRadius: radius.md, flexShrink: 0, alignSelf: 'center' },
+    productRowImagePlaceholder: {
+        width: 48, height: 48, borderRadius: radius.md,
+        backgroundColor: colors.borderLight,
+        justifyContent: 'center', alignItems: 'center',
+        flexShrink: 0,
+        alignSelf: 'center',
+    },
+    productRowBody: { flex: 1, minWidth: 0, justifyContent: 'center' },
+    productRowName: { fontSize: 14, fontWeight: '700', color: colors.text },
+    productRowMeta: { marginTop: 2 },
+    productRowPrice: { fontSize: 13, fontWeight: '600', color: colors.primary },
+    productRowStock: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+    productRowAvailability: {
+        width: 30, height: 30, borderRadius: 15,
+        alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+        alignSelf: 'center',
+    },
+    availabilityDot: { width: 10, height: 10, borderRadius: 5 },
+    productRowEditBtn: {
+        width: 30, height: 30, borderRadius: 15,
+        backgroundColor: colors.primaryLight,
+        alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+        alignSelf: 'center',
     },
     productImageContainer: { position: 'relative' },
     productImage: { width: '100%', height: 180 },

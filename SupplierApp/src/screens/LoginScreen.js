@@ -238,7 +238,7 @@ const createStyles = (colors) => StyleSheet.create({
         shadowRadius: 16,
         elevation: 4,
     },
-    formTitle: { ...typography.h2, marginBottom: spacing.xl },
+    formTitle: { ...typography.h2, marginBottom: spacing.xl, color: colors.text },
     modeRow: {
         flexDirection: 'row',
         backgroundColor: colors.background,

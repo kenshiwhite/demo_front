@@ -460,7 +460,7 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: STATUS_TOP,
         paddingBottom: spacing.lg,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.card,
     },
     headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
     headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },

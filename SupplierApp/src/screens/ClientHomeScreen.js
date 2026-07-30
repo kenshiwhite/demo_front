@@ -511,6 +511,50 @@ export default function ClientHomeScreen() {
         );
     };
 
+    const activeRequests = useMemo(
+        () => myRequests.filter(r => ['pending', 'accepted'].includes(r.status)),
+        [myRequests]
+    );
+
+    const renderActiveRequestsWidget = () => {
+        if (view !== 'requests' || activeRequests.length === 0) return null;
+        return (
+            <View style={styles.activeWidget}>
+                <View style={styles.activeWidgetHeader}>
+                    <Icon name="clock" size={15} color={colors.primary} />
+                    <Text style={styles.activeWidgetTitle}>Активные заявки</Text>
+                    <View style={styles.activeWidgetCount}>
+                        <Text style={styles.activeWidgetCountText}>{activeRequests.length}</Text>
+                    </View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeWidgetScroll}>
+                    {activeRequests.map(item => {
+                        const statusConfig = getStatusConfig(item.status);
+                        return (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={styles.activeCard}
+                                onPress={() => setSelectedRequest(item)}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.activeCardBadge, { backgroundColor: statusConfig.bg }]}>
+                                    <Icon name={statusConfig.icon} size={11} color={statusConfig.color} />
+                                    <Text style={[styles.activeCardBadgeText, { color: statusConfig.color }]}>
+                                        {statusConfig.label}
+                                    </Text>
+                                </View>
+                                <Text style={styles.activeCardSupplier} numberOfLines={1}>{item.supplier_name}</Text>
+                                <Text style={styles.activeCardMeta} numberOfLines={1}>
+                                    {item.items?.length || 0} товар(ов){item.total_price ? ` · ${parseInt(item.total_price).toLocaleString('ru-RU')} ₸` : ''}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+        );
+    };
+
     const isProductView = view === 'all' || view === 'products';
 
     return (
@@ -673,6 +717,7 @@ export default function ClientHomeScreen() {
                     renderItem={renderRequest}
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
+                    ListHeaderComponent={renderActiveRequestsWidget}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <View style={styles.emptyIconBox}>
@@ -1297,6 +1342,45 @@ const createStyles = (colors) => StyleSheet.create({
     listCartBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
     // Request card
+    activeWidget: { marginBottom: spacing.lg },
+    activeWidgetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginBottom: spacing.sm,
+    },
+    activeWidgetTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+    activeWidgetCount: {
+        backgroundColor: colors.primaryLight,
+        borderRadius: radius.full,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        marginLeft: 2,
+    },
+    activeWidgetCountText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+    activeWidgetScroll: { gap: spacing.sm, paddingRight: spacing.lg },
+    activeCard: {
+        width: 180,
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        ...shadow.sm,
+    },
+    activeCardBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 4,
+        borderRadius: radius.sm,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 3,
+        marginBottom: spacing.sm,
+    },
+    activeCardBadgeText: { fontSize: 11, fontWeight: '700' },
+    activeCardSupplier: { fontSize: 13, fontWeight: '700', color: colors.text },
+    activeCardMeta: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
     requestCard: {
         backgroundColor: colors.card,
         borderRadius: radius.xl,

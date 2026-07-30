@@ -95,7 +95,11 @@ export default function Sidebar({
                         {user?.company_name || user?.username}
                     </Text>
                     <Text style={styles.userRole}>
-                        {user?.role === 'supplier' ? 'Поставщик' : 'Сотрудник'}
+                        {{
+                            supplier: 'Поставщик',
+                            sales_rep: 'Сотрудник',
+                            client: 'Заказчик',
+                        }[user?.role] || ''}
                     </Text>
                 </View>
 

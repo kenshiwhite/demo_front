@@ -20,6 +20,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [clients, setClients] = useState([]);
+    const [workers, setWorkers] = useState([]);
     const [requests, setRequests] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +33,8 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
     const [quantities, setQuantities] = useState({});
     const [saving, setSaving] = useState(false);
     const [selectedClient, setSelectedClient] = useState(null);
+    const [showRepPicker, setShowRepPicker] = useState(false);
+    const [assigningRep, setAssigningRep] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -49,6 +52,16 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
             Alert.alert('Ошибка', 'Не удалось загрузить список клиентов');
         } finally {
             setLoading(false);
+        }
+        // Workers are only needed for the rep-assignment picker — fetched
+        // separately so a failure here (permissions, network) never blocks
+        // the client list itself from showing.
+        try {
+            const cityParams = activeCity ? { city: activeCity } : {};
+            const workersRes = await client.get('/api/auth/workers/', { params: cityParams });
+            setWorkers(workersRes.data.results || workersRes.data);
+        } catch (error) {
+            setWorkers([]);
         }
     }, [activeCity]);
 
@@ -109,6 +122,26 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
             Alert.alert('Ошибка', error.response?.data?.detail || 'Не удалось создать заявку');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const assignRep = async (workerId) => {
+        if (!selectedClient) return;
+        setAssigningRep(true);
+        try {
+            const { data } = await client.patch(
+                `/api/auth/clients/${selectedClient.client_type}/${selectedClient.id}/assign-rep/`,
+                { sales_rep_id: workerId || null }
+            );
+            setSelectedClient(prev => ({ ...prev, ...data, client_type: prev.client_type }));
+            setClients(current => current.map(c =>
+                clientKey(c) === clientKey(selectedClient) ? { ...c, ...data, client_type: c.client_type } : c
+            ));
+        } catch (error) {
+            Alert.alert('Ошибка', error.response?.data?.detail || 'Не удалось назначить сотрудника');
+        } finally {
+            setAssigningRep(false);
+            setShowRepPicker(false);
         }
     };
 
@@ -371,11 +404,18 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                                             <Text style={styles.detail}>{selectedClient.notes}</Text>
                                         </>
                                     ) : null}
-                                    {selectedClient.sales_rep_name ? (
-                                        <Text style={styles.assigned}>Ответственный сотрудник: {selectedClient.sales_rep_name}</Text>
-                                    ) : (
-                                        <Text style={styles.muted}>Сотрудник ещё не закреплён за этим клиентом.</Text>
-                                    )}
+                                    <Text style={styles.sectionTitle}>Ответственный сотрудник</Text>
+                                    <TouchableOpacity
+                                        style={styles.repRow}
+                                        onPress={() => setShowRepPicker(true)}
+                                        disabled={assigningRep}
+                                    >
+                                        <Icon name="team" size={16} color={selectedClient.sales_rep_name ? colors.primary : colors.textTertiary} />
+                                        <Text style={[styles.repRowText, !selectedClient.sales_rep_name && styles.muted]}>
+                                            {selectedClient.sales_rep_name || 'Сотрудник не закреплён'}
+                                        </Text>
+                                        <Icon name="chevronRight" size={16} color={colors.textTertiary} />
+                                    </TouchableOpacity>
 
                                     {!isRegistered && (
                                         <Button
@@ -392,6 +432,43 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                             );
                         })()}
                     </ScrollView>
+            </BottomSheet>
+
+            <BottomSheet visible={showRepPicker} onClose={() => setShowRepPicker(false)}>
+                <View style={styles.modal}>
+                    <View style={styles.modalHandle} />
+                    <Text style={styles.modalTitle}>Ответственный сотрудник</Text>
+                    <ScrollView style={{ maxHeight: 420 }}>
+                        <TouchableOpacity
+                            style={[styles.repOption, !selectedClient?.sales_rep_name && styles.repOptionActive]}
+                            onPress={() => assignRep(null)}
+                            disabled={assigningRep}
+                        >
+                            <Text style={styles.repOptionText}>Не назначен</Text>
+                            {!selectedClient?.sales_rep_name && <Icon name="check" size={18} color={colors.primary} />}
+                        </TouchableOpacity>
+                        {workers.map(worker => {
+                            const active = selectedClient?.sales_rep === worker.id;
+                            return (
+                                <TouchableOpacity
+                                    key={worker.id}
+                                    style={[styles.repOption, active && styles.repOptionActive]}
+                                    onPress={() => assignRep(worker.id)}
+                                    disabled={assigningRep}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.repOptionText}>{worker.username}</Text>
+                                        {worker.city_display ? <Text style={styles.muted}>{worker.city_display}</Text> : null}
+                                    </View>
+                                    {active && <Icon name="check" size={18} color={colors.primary} />}
+                                </TouchableOpacity>
+                            );
+                        })}
+                        {workers.length === 0 && (
+                            <Text style={styles.muted}>В вашей компании пока нет сотрудников.</Text>
+                        )}
+                    </ScrollView>
+                </View>
             </BottomSheet>
         </View>
     );
@@ -417,7 +494,7 @@ const createStyles = (colors) => StyleSheet.create({
     smallAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
     avatarText: { color: colors.primary, fontWeight: '800', fontSize: 17 },
     name: { color: colors.text, fontWeight: '700', fontSize: 15 },
-    muted: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
+    muted: { color: colors.textSecondary, fontSize: 13, marginTop: 2, textAlign: 'center' },
     detail: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
     assigned: { color: colors.primary, fontSize: 12, marginTop: spacing.sm },
     count: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4 },
@@ -480,4 +557,28 @@ const createStyles = (colors) => StyleSheet.create({
         gap: spacing.sm,
         marginBottom: spacing.sm,
     },
+    repRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        backgroundColor: colors.card,
+        marginBottom: spacing.md,
+    },
+    repRowText: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '500' },
+    repOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.md,
+        borderRadius: radius.lg,
+        marginBottom: spacing.xs,
+    },
+    repOptionActive: { backgroundColor: colors.primaryLight },
+    repOptionText: { fontSize: 15, color: colors.text, fontWeight: '500' },
 });
