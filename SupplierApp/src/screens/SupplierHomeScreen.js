@@ -619,9 +619,9 @@ export default function SupplierHomeScreen() {
                             <Icon name="chevronRight" size={11} color="rgba(255,255,255,0.8)" />
                         )}
                     </TouchableOpacity>
-                    <Text style={styles.headerName} numberOfLines={1}>
+                    {/* <Text style={styles.headerName} numberOfLines={1}>
                         {user?.company_name || user?.username}
-                    </Text>
+                    </Text> */}
                 </View>
                 <View style={styles.headerActions}>
                     <TouchableOpacity
@@ -1627,6 +1627,6 @@ const createStyles = (colors) => StyleSheet.create({
         fontSize: 13,
         color: '#fff',
         fontWeight: '600',
-        maxWidth: 120,
+        flex: 1,
     },
 });

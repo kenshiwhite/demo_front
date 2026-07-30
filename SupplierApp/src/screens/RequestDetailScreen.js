@@ -135,16 +135,16 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-                    <Icon name="chevronLeft" size={22} color="#fff" />
+                    <Icon name="chevronLeft" size={22} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Заявка #{request.id}</Text>
                 {isEditable && !editing ? (
                     <TouchableOpacity onPress={() => setEditing(true)} style={styles.headerBtn}>
-                        <Icon name="edit" size={18} color="#fff" />
+                        <Icon name="edit" size={18} color={colors.text} />
                     </TouchableOpacity>
                 ) : editing ? (
                     <TouchableOpacity onPress={handleSave} style={styles.headerBtn}>
-                        <Icon name="check" size={20} color="#fff" />
+                        <Icon name="check" size={20} color={colors.text} />
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.headerBtn} />
@@ -463,7 +463,7 @@ const createStyles = (colors) => StyleSheet.create({
         backgroundColor: colors.card,
     },
     headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
     body: { flex: 1 },
     statusBanner: {
         flexDirection: 'row',

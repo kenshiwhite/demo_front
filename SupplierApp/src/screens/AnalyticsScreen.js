@@ -326,10 +326,10 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         paddingTop: STATUS_TOP,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.card,
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    back: { color: '#fff', fontSize: 14 },
+    headerTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
+    back: { color: colors.text, fontSize: 14 },
     periodBar: {
         flexDirection: 'row',
         backgroundColor: colors.card,

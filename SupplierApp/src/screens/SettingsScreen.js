@@ -49,7 +49,7 @@ export default function SettingsScreen({ onClose }) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-                    <Icon name="chevronLeft" size={22} color="#fff" />
+                    <Icon name="chevronLeft" size={22} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>{t('settings.title')}</Text>
                 <View style={styles.headerBtn} />
@@ -142,10 +142,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: STATUS_TOP,
         paddingBottom: spacing.lg,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.card,
     },
     headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
     body: { flex: 1, padding: spacing.lg },
     sectionLabel: {
         fontSize: 11,
