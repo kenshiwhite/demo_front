@@ -654,6 +654,7 @@ export default function SupplierHomeScreen() {
             ) : view === 'home' ? (
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
+                    activeCity={activeCity}
                 />
             ) : loading ? (
                 <View style={styles.loadingContainer}>

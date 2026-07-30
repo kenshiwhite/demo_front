@@ -20,7 +20,7 @@ LocaleConfig.locales['ru'] = {
 };
 LocaleConfig.defaultLocale = 'ru';
 
-export default function SupplierHomeTab({ onRequestPress }) {
+export default function SupplierHomeTab({ onRequestPress, activeCity }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -33,14 +33,15 @@ export default function SupplierHomeTab({ onRequestPress }) {
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [activeCity]);
 
     const loadData = async () => {
         setLoading(true);
         try {
+            const cityParams = activeCity ? { city: activeCity } : {};
             const [productsRes, requestsRes] = await Promise.all([
-                client.get('/api/catalog/products/'),
-                client.get('/api/requests/'),
+                client.get('/api/catalog/products/', { params: cityParams }),
+                client.get('/api/requests/', { params: cityParams }),
             ]);
             const prods = productsRes.data.results || productsRes.data;
             const reqs = requestsRes.data.results || requestsRes.data;
