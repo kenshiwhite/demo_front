@@ -191,11 +191,11 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                         <View style={styles.avatar}><Text style={styles.avatarText}>{item.name?.[0]?.toUpperCase() || 'К'}</Text></View>
                     )}
                     <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'left', gap: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Text style={styles.name}>{item.name}</Text>
                             {isRegistered && <Badge label="В приложении" color={colors.purple} />}
                         </View>
-                        <Text style={styles.muted}>Организация: {item.company_name || 'Частный клиент'}</Text>
+                        <Text style={styles.muted}>{item.company_name || 'Частный клиент'}</Text>
                     </View>
                     <View style={styles.count}><Text style={styles.countText}>{item.request_count || 0} заявок</Text></View>
                 </View>
@@ -242,16 +242,18 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                         <View style={styles.empty}>
                             <Icon name="user" size={30} color={colors.textTertiary} />
                             <Text style={styles.emptyTitle}>Клиентов пока нет</Text>
-                            <Text style={styles.noclient}>Добавьте клиента или дождитесь его первой заявки.</Text>
+                            <Text style={styles.muted}>Добавьте клиента или дождитесь его первой заявки.</Text>
                         </View>
                     }
                 />
             )}
 
-            <TouchableOpacity style={styles.fab} onPress={openPersonModal}>
-                <Icon name="plus" size={20} color="#fff" />
-                <Text style={styles.fabText}>Добавить клиента</Text>
-            </TouchableOpacity>
+            {!personModal && !requestModal && !selectedClient && !showDatePicker && !showRepPicker && (
+                <TouchableOpacity style={styles.fab} onPress={openPersonModal}>
+                    <Icon name="plus" size={20} color="#fff" />
+                    <Text style={styles.fabText}>Добавить клиента</Text>
+                </TouchableOpacity>
+            )}
 
             <BottomSheet visible={personModal} onClose={() => setPersonModal(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
@@ -465,7 +467,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                             );
                         })}
                         {workers.length === 0 && (
-                            <Text style={styles.nolcient}>В вашей компании пока нет сотрудников.</Text>
+                            <Text style={styles.muted}>В вашей компании пока нет сотрудников.</Text>
                         )}
                     </ScrollView>
                 </View>
@@ -494,8 +496,7 @@ const createStyles = (colors) => StyleSheet.create({
     smallAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
     avatarText: { color: colors.primary, fontWeight: '800', fontSize: 17 },
     name: { color: colors.text, fontWeight: '700', fontSize: 15 },
-    muted: { color: colors.textSecondary, fontSize: 13, marginTop: 2, textAlign: 'left' },
-    nolcient: { color: colors.textSecondary, fontSize: 13, marginTop: 2, textAlign: 'center' },
+    muted: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
     detail: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
     assigned: { color: colors.primary, fontSize: 12, marginTop: spacing.sm },
     count: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4 },

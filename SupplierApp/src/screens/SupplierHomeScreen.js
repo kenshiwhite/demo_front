@@ -16,6 +16,7 @@ import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import ProfileScreen from './ProfileScreen';
 import AnalyticsScreen from './AnalyticsScreen';
+import WorkerStatsScreen from './WorkerStatsScreen';
 import Sidebar from '../components/Sidebar';
 import { InputField, Button, SectionTitle } from '../components/UI';
 import { spacing, radius, typography, STATUS_TOP, shadow } from '../styles/theme';
@@ -49,6 +50,7 @@ export default function SupplierHomeScreen() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showRepStats, setShowRepStats] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
     const [profileInitialSettings, setProfileInitialSettings] = useState(false);
     const [productImage, setProductImage] = useState(null);
@@ -158,6 +160,8 @@ export default function SupplierHomeScreen() {
             setView('workers');
         } else if (key === 'analytics') {
             setShowAnalytics(true);
+        } else if (key === 'rep_stats') {
+            setShowRepStats(true);
         }
     };
 
@@ -619,9 +623,9 @@ export default function SupplierHomeScreen() {
                             <Icon name="chevronRight" size={11} color="rgba(255,255,255,0.8)" />
                         )}
                     </TouchableOpacity>
-                    {/* <Text style={styles.headerName} numberOfLines={1}>
+                    <Text style={styles.headerName} numberOfLines={1}>
                         {user?.company_name || user?.username}
-                    </Text> */}
+                    </Text>
                 </View>
                 <View style={styles.headerActions}>
                     <TouchableOpacity
@@ -723,6 +727,7 @@ export default function SupplierHomeScreen() {
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
                     activeCity={activeCity}
+                    onOpenRepStats={() => setShowRepStats(true)}
                 />
             ) : loading ? (
                 <View style={styles.loadingContainer}>
@@ -1128,6 +1133,10 @@ export default function SupplierHomeScreen() {
                 <AnalyticsScreen onClose={() => setShowAnalytics(false)} />
             </ScreenOverlay>
 
+            <ScreenOverlay visible={showRepStats}>
+                <WorkerStatsScreen onClose={() => setShowRepStats(false)} />
+            </ScreenOverlay>
+
             <CityPickerSheet
                 visible={showActiveCityPicker}
                 onClose={() => setShowActiveCityPicker(false)}
@@ -1154,6 +1163,7 @@ export default function SupplierHomeScreen() {
                 onLogout={signOut}
                 showWorkers={user?.role === 'supplier'}
                 showAnalytics={user?.role === 'supplier'}
+                showRepStats={user?.role === 'sales_rep'}
             />
         </View>
     );
@@ -1627,6 +1637,6 @@ const createStyles = (colors) => StyleSheet.create({
         fontSize: 13,
         color: '#fff',
         fontWeight: '600',
-        flex: 1,
+        maxWidth: 120,
     },
 });

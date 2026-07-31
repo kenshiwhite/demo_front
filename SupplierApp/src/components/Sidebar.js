@@ -16,6 +16,7 @@ const MENU_ITEMS = [
     { key: 'clients', label: 'Клиенты', icon: 'contact_card' },
     { key: 'workers', label: 'Сотрудники', icon: 'team' },
     { key: 'analytics', label: 'Аналитика', icon: 'bar_chart' },
+    { key: 'rep_stats', label: 'Моя статистика', icon: 'trending_up' },
     { key: 'settings', label: 'Настройки', icon: 'info' },
 ];
 
@@ -23,7 +24,7 @@ const MENU_ITEMS = [
 // Reuses the app's existing icons — no new icon assets needed.
 export default function Sidebar({
     visible, onClose, user, onNavigate, onLogout,
-    showClients = true, showWorkers = true, showAnalytics = true,
+    showClients = true, showWorkers = true, showAnalytics = true, showRepStats = false,
 }) {
     const { colors } = useTheme();
     const styles = createStyles(colors);
@@ -71,6 +72,7 @@ export default function Sidebar({
         if (item.key === 'clients') return showClients;
         if (item.key === 'workers') return showWorkers;
         if (item.key === 'analytics') return showAnalytics;
+        if (item.key === 'rep_stats') return showRepStats;
         return true;
     });
 
@@ -98,7 +100,7 @@ export default function Sidebar({
                         {{
                             supplier: 'Поставщик',
                             sales_rep: 'Сотрудник',
-                            client: 'Заказчик',
+                            client: 'Клиент',
                         }[user?.role] || ''}
                     </Text>
                 </View>

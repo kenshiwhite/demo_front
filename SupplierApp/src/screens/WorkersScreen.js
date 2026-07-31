@@ -169,10 +169,12 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                 />
             )}
 
-            <TouchableOpacity style={styles.fab} onPress={openPersonModal}>
-                <Icon name="plus" size={20} color="#fff" />
-                <Text style={styles.fabText}>Добавить сотрудника</Text>
-            </TouchableOpacity>
+            {!personModal && !selectedWorker && (
+                <TouchableOpacity style={styles.fab} onPress={openPersonModal}>
+                    <Icon name="plus" size={20} color="#fff" />
+                    <Text style={styles.fabText}>Добавить сотрудника</Text>
+                </TouchableOpacity>
+            )}
 
             <BottomSheet visible={personModal} onClose={() => setPersonModal(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">

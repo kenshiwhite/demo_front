@@ -8,6 +8,7 @@ import { Calendar, LocaleConfig } from 'react-native-calendars';
 import client from '../api/client';
 import { spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icon';
 import RequestDetailScreen from './RequestDetailScreen';
 
@@ -20,9 +21,11 @@ LocaleConfig.locales['ru'] = {
 };
 LocaleConfig.defaultLocale = 'ru';
 
-export default function SupplierHomeTab({ onRequestPress, activeCity }) {
+export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepStats }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const { user } = useAuth();
+    const isRep = user?.role === 'sales_rep';
 
     const [products, setProducts] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -30,10 +33,18 @@ export default function SupplierHomeTab({ onRequestPress, activeCity }) {
     const [selectedDate, setSelectedDate] = useState(null);
     const [markedDates, setMarkedDates] = useState({});
     const [requestsByDate, setRequestsByDate] = useState({});
+    const [repStats, setRepStats] = useState(null);
 
     useEffect(() => {
         loadData();
     }, [activeCity]);
+
+    useEffect(() => {
+        if (!isRep) return;
+        client.get('/api/catalog/rep-analytics/?period=30')
+            .then(res => setRepStats(res.data))
+            .catch(() => setRepStats(null));
+    }, [isRep]);
 
     const loadData = async () => {
         setLoading(true);
@@ -149,6 +160,41 @@ export default function SupplierHomeTab({ onRequestPress, activeCity }) {
     return (
         <View style={{ flex: 1 }}>
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                {/* Brief personal stats widget for sales reps */}
+                {isRep && repStats && (
+                    <TouchableOpacity
+                        style={styles.statsWidget}
+                        onPress={onOpenRepStats}
+                        activeOpacity={0.85}
+                    >
+                        <View style={styles.statsWidgetHeader}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.statsWidgetTitle}>Моя статистика</Text>
+                                <Text style={styles.statsWidgetSub}>За последние 30 дней</Text>
+                            </View>
+                            <Icon name="chevronRight" size={18} color="rgba(255,255,255,0.85)" />
+                        </View>
+                        <View style={styles.statsWidgetRow}>
+                            <View style={styles.statsWidgetItem}>
+                                <Text style={styles.statsWidgetValue}>
+                                    {parseInt(repStats.total_revenue || 0).toLocaleString('ru-RU')} ₸
+                                </Text>
+                                <Text style={styles.statsWidgetLabel}>Выручка</Text>
+                            </View>
+                            <View style={styles.statsWidgetDivider} />
+                            <View style={styles.statsWidgetItem}>
+                                <Text style={styles.statsWidgetValue}>{repStats.total_orders || 0}</Text>
+                                <Text style={styles.statsWidgetLabel}>Заказов</Text>
+                            </View>
+                            <View style={styles.statsWidgetDivider} />
+                            <View style={styles.statsWidgetItem}>
+                                <Text style={styles.statsWidgetValue}>{repStats.client_count || 0}</Text>
+                                <Text style={styles.statsWidgetLabel}>Клиентов</Text>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                )}
+
                 {/* Stock alerts */}
                 {lowStockProducts.length > 0 && (
                     <View style={styles.section}>
@@ -391,6 +437,22 @@ const createStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
     loadingText: { fontSize: 14, color: colors.textSecondary },
+    statsWidget: {
+        backgroundColor: colors.primary,
+        marginHorizontal: spacing.lg,
+        marginTop: spacing.lg,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        ...shadow.sm,
+    },
+    statsWidgetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+    statsWidgetTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
+    statsWidgetSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+    statsWidgetRow: { flexDirection: 'row', alignItems: 'center' },
+    statsWidgetItem: { flex: 1, alignItems: 'center' },
+    statsWidgetValue: { fontSize: 16, fontWeight: '700', color: '#fff' },
+    statsWidgetLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+    statsWidgetDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.25)' },
     section: {
         backgroundColor: colors.card,
         marginHorizontal: spacing.lg,
