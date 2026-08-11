@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import SupplierHomeTab from './SupplierHomeTab';
+import FinanceScreen from './FinanceScreen';
 import NotificationsScreen from './NotificationsScreen';
 import RequestDetailScreen from './RequestDetailScreen';
 import ProfileScreen from './ProfileScreen';
@@ -225,6 +226,7 @@ export default function SupplierHomeScreen() {
                 name: product.name,
                 description: product.description || '',
                 price: product.price.toString(),
+                cost_price: product.cost_price != null ? product.cost_price.toString() : '',
                 unit: product.unit,
                 stock_quantity: product.stock_quantity.toString(),
                 is_available: product.is_available,
@@ -234,7 +236,7 @@ export default function SupplierHomeScreen() {
         } else {
             setEditingProduct(null);
             setProductForm({
-                name: '', description: '', price: '',
+                name: '', description: '', price: '', cost_price: '',
                 unit: '', stock_quantity: '', is_available: true, category: '',
                 city: activeCity,
             });
@@ -284,6 +286,9 @@ export default function SupplierHomeScreen() {
             formData.append('name', productForm.name.trim());
             formData.append('description', productForm.description);
             formData.append('price', parseFloat(productForm.price));
+            if (productForm.cost_price) {
+                formData.append('cost_price', parseFloat(productForm.cost_price));
+            }
             formData.append('unit', productForm.unit.trim());
             formData.append('stock_quantity', parseInt(productForm.stock_quantity) || 0);
             formData.append('is_available', productForm.is_available);
@@ -675,6 +680,15 @@ export default function SupplierHomeScreen() {
                         <Icon name="layers" size={16} color={view === 'products' ? colors.primary : colors.textTertiary} />
                         <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>Товары</Text>
                     </TouchableOpacity>
+                    {user?.role === 'supplier' && (
+                        <TouchableOpacity
+                            style={[styles.tab, view === 'finance' && styles.tabActive]}
+                            onPress={() => setView('finance')}
+                        >
+                            <Icon name="trending_up" size={16} color={view === 'finance' ? colors.primary : colors.textTertiary} />
+                            <Text style={[styles.tabText, view === 'finance' && styles.tabTextActive]}>Финансы</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             )}
 
@@ -723,6 +737,8 @@ export default function SupplierHomeScreen() {
                 <ClientsScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
             ) : view === 'workers' ? (
                 <WorkersScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
+            ) : view === 'finance' ? (
+                <FinanceScreen />
             ) : view === 'home' ? (
                 <SupplierHomeTab
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
@@ -1000,6 +1016,14 @@ export default function SupplierHomeScreen() {
                                         />
                                     </View>
                                 </View>
+
+                                <InputField
+                                    label="Закупочная цена (₸)"
+                                    value={productForm.cost_price}
+                                    onChangeText={(v) => setProductForm(p => ({ ...p, cost_price: v }))}
+                                    placeholder="Необязательно — для расчёта прибыли"
+                                    keyboardType="numeric"
+                                />
 
                                 <InputField
                                     label="Количество на складе"

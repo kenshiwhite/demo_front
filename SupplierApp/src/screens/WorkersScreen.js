@@ -13,7 +13,7 @@ import { AnimatedListItem } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
 import { cityLabel } from '../constants/cities';
 
-const emptyPerson = { username: '', phone: '', email: '', password: '' };
+const emptyPerson = { username: '', phone: '', email: '', password: '', base_salary: '' };
 
 export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }) {
     const { colors } = useTheme();
@@ -139,7 +139,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.text} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>
                     Сотрудники{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
@@ -184,6 +184,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                     <InputField label="Телефон *" value={person.phone} onChangeText={v => setPerson(p => ({ ...p, phone: v }))} placeholder="+7 700 000 00 00" keyboardType="phone-pad" />
                     <InputField label="Email" value={person.email} onChangeText={v => setPerson(p => ({ ...p, email: v }))} placeholder="mail@example.com" keyboardType="email-address" />
                     <InputField label="Временный пароль *" value={person.password} onChangeText={v => setPerson(p => ({ ...p, password: v }))} placeholder="Не менее 8 символов" secureTextEntry />
+                    <InputField label="Оклад в месяц (₸)" value={person.base_salary} onChangeText={v => setPerson(p => ({ ...p, base_salary: v }))} placeholder="Необязательно — для учёта расходов" keyboardType="numeric" />
                     <Button label="Создать учётную запись" onPress={savePerson} loading={saving} />
                     <Button label="Отмена" onPress={() => setPersonModal(false)} variant="ghost" />
                 </ScrollView></KeyboardAvoidingView>
@@ -257,10 +258,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: spacing.md,
         paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.card,
+        backgroundColor: colors.primary,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
