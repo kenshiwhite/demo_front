@@ -26,6 +26,54 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
     const [person, setPerson] = useState(emptyPerson);
     const [saving, setSaving] = useState(false);
     const [selectedWorker, setSelectedWorker] = useState(null);
+    const [payForm, setPayForm] = useState({ base_salary: '', bonus_sales_threshold: '', bonus_percent: '' });
+    const [savingPay, setSavingPay] = useState(false);
+    const [grantingBonus, setGrantingBonus] = useState(false);
+
+    useEffect(() => {
+        if (selectedWorker) {
+            setPayForm({
+                base_salary: selectedWorker.base_salary || '',
+                bonus_sales_threshold: selectedWorker.bonus_sales_threshold || '',
+                bonus_percent: selectedWorker.bonus_percent || '',
+            });
+        }
+    }, [selectedWorker?.id]);
+
+    const savePay = async () => {
+        setSavingPay(true);
+        try {
+            const { data } = await client.patch(`/api/auth/workers/${selectedWorker.id}/`, {
+                base_salary: payForm.base_salary || null,
+                bonus_sales_threshold: payForm.bonus_sales_threshold || null,
+                bonus_percent: payForm.bonus_percent || null,
+            });
+            setSelectedWorker(data);
+            setWorkers(current => current.map(w => w.id === data.id ? data : w));
+            Alert.alert('Готово', 'Оплата сотрудника обновлена.');
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось сохранить');
+        } finally {
+            setSavingPay(false);
+        }
+    };
+
+    const grantBonus = async () => {
+        setGrantingBonus(true);
+        try {
+            await client.post('/api/finance/bonuses/', {
+                worker: selectedWorker.id,
+                amount: selectedWorker.bonus_amount,
+                reason: `Бонус за выполнение плана продаж (${selectedWorker.bonus_percent}% от оклада)`,
+                date: new Date().toISOString().split('T')[0],
+            });
+            Alert.alert('Готово', 'Бонус начислен и учтён в финансах.');
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось начислить бонус');
+        } finally {
+            setGrantingBonus(false);
+        }
+    };
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -131,7 +179,21 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                 <Icon name="chevronRight" size={18} color={colors.textTertiary} />
             </View>
             {item.email ? <Text style={styles.detail}>Email: {item.email}</Text> : null}
-            <Text style={styles.assigned}>Нажмите, чтобы посмотреть клиентов и продажи.</Text>
+            {item.bonus_sales_threshold ? (
+                <View style={styles.miniProgressWrap}>
+                    <View style={styles.miniProgressBar}>
+                        <View style={[
+                            styles.miniProgressFill,
+                            { width: `${item.bonus_progress_percent || 0}%`, backgroundColor: item.bonus_earned ? colors.success : colors.primary }
+                        ]} />
+                    </View>
+                    <Text style={styles.miniProgressText}>
+                        {item.bonus_earned ? 'Бонус выполнен 🎉' : `${item.bonus_progress_percent || 0}% до бонуса`}
+                    </Text>
+                </View>
+            ) : (
+                <Text style={styles.assigned}>Нажмите, чтобы посмотреть клиентов и продажи.</Text>
+            )}
         </TouchableOpacity>
     );
 
@@ -215,6 +277,69 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                             </TouchableOpacity>
                         </View>
 
+                        <Text style={styles.sectionTitle}>Оплата и бонусы</Text>
+                        <InputField
+                            label="Оклад в месяц (₸)"
+                            value={String(payForm.base_salary)}
+                            onChangeText={v => setPayForm(f => ({ ...f, base_salary: v }))}
+                            placeholder="Не указан"
+                            keyboardType="numeric"
+                        />
+                        <View style={styles.rowInputs}>
+                            <View style={{ flex: 1 }}>
+                                <InputField
+                                    label="План продаж (₸)"
+                                    value={String(payForm.bonus_sales_threshold)}
+                                    onChangeText={v => setPayForm(f => ({ ...f, bonus_sales_threshold: v }))}
+                                    placeholder="Например, 1000000"
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={{ width: spacing.md }} />
+                            <View style={{ flex: 1 }}>
+                                <InputField
+                                    label="Бонус (% от оклада)"
+                                    value={String(payForm.bonus_percent)}
+                                    onChangeText={v => setPayForm(f => ({ ...f, bonus_percent: v }))}
+                                    placeholder="Например, 15"
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </View>
+                        <Button label="Сохранить оплату" onPress={savePay} loading={savingPay} variant="secondary" />
+
+                        {selectedWorker?.bonus_sales_threshold ? (
+                            <View style={styles.bonusProgressCard}>
+                                <View style={styles.bonusProgressHeader}>
+                                    <Text style={styles.bonusProgressLabel}>
+                                        {formatMoney(selectedWorker.current_month_sales || 0)} из {formatMoney(selectedWorker.bonus_sales_threshold)}
+                                    </Text>
+                                    <Text style={styles.bonusProgressPercent}>{selectedWorker.bonus_progress_percent || 0}%</Text>
+                                </View>
+                                <View style={styles.progressBarTrack}>
+                                    <View style={[
+                                        styles.progressBarFill,
+                                        {
+                                            width: `${selectedWorker.bonus_progress_percent || 0}%`,
+                                            backgroundColor: selectedWorker.bonus_earned ? colors.success : colors.primary,
+                                        }
+                                    ]} />
+                                </View>
+                                {selectedWorker.bonus_earned ? (
+                                    <>
+                                        <Text style={styles.bonusEarnedText}>
+                                            🎉 План выполнен — доступен бонус {formatMoney(selectedWorker.bonus_amount || 0)}
+                                        </Text>
+                                        <Button label="Начислить бонус" onPress={grantBonus} loading={grantingBonus} style={{ marginTop: spacing.sm }} />
+                                    </>
+                                ) : (
+                                    <Text style={styles.muted}>
+                                        До бонуса {selectedWorker.bonus_percent}% от оклада осталось {formatMoney(Math.max(0, (selectedWorker.bonus_sales_threshold || 0) - (selectedWorker.current_month_sales || 0)))}
+                                    </Text>
+                                )}
+                            </View>
+                        ) : null}
+
                         <Text style={styles.sectionTitle}>Статистика продаж</Text>
                         <View style={styles.statsGrid}>
                             <View style={styles.statCard}><Text style={styles.statValue}>{workerStats?.clients.length || 0}</Text><Text style={styles.statLabel}>Клиентов</Text></View>
@@ -272,6 +397,23 @@ const createStyles = (colors) => StyleSheet.create({
     muted: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
     detail: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
     assigned: { color: colors.primary, fontSize: 12, marginTop: spacing.sm },
+    miniProgressWrap: { marginTop: spacing.sm },
+    miniProgressBar: { height: 6, borderRadius: 3, backgroundColor: colors.borderLight, overflow: 'hidden' },
+    miniProgressFill: { height: '100%', borderRadius: 3 },
+    miniProgressText: { fontSize: 11, color: colors.textSecondary, marginTop: 4, fontWeight: '600' },
+    rowInputs: { flexDirection: 'row' },
+    bonusProgressCard: {
+        backgroundColor: colors.primaryLight,
+        borderRadius: radius.lg,
+        padding: spacing.md,
+        marginBottom: spacing.lg,
+    },
+    bonusProgressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+    bonusProgressLabel: { fontSize: 13, fontWeight: '700', color: colors.text },
+    bonusProgressPercent: { fontSize: 13, fontWeight: '800', color: colors.primary },
+    progressBarTrack: { height: 10, borderRadius: 5, backgroundColor: colors.card, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 5 },
+    bonusEarnedText: { fontSize: 13, fontWeight: '700', color: colors.success, marginTop: spacing.sm },
     fab: { position: 'absolute', right: spacing.lg, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderRadius: radius.xl },
     fabText: { color: '#fff', fontWeight: '700' },
     empty: { alignItems: 'center', padding: spacing.xl, gap: spacing.sm },

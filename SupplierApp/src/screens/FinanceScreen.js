@@ -258,8 +258,47 @@ export default function FinanceScreen() {
                                 <Text style={styles.addBtnText}>Добавить</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {workers.filter(w => w.bonus_sales_threshold).map(worker => (
+                            <TouchableOpacity
+                                key={worker.id}
+                                style={styles.workerMiniCard}
+                                onPress={() => {
+                                    setBonusForm({
+                                        worker: worker.id,
+                                        amount: worker.bonus_earned ? String(worker.bonus_amount || '') : '',
+                                        reason: worker.bonus_earned
+                                            ? `Бонус за выполнение плана продаж (${worker.bonus_percent}% от оклада)`
+                                            : '',
+                                        date: todayStr(),
+                                    });
+                                    setBonusModal(true);
+                                }}
+                            >
+                                <View style={styles.workerMiniHeader}>
+                                    <Text style={styles.workerMiniName}>{worker.username}</Text>
+                                    <Text style={styles.workerMiniPercent}>{worker.bonus_progress_percent || 0}%</Text>
+                                </View>
+                                <View style={styles.progressBarTrack}>
+                                    <View style={[
+                                        styles.progressBarFill,
+                                        {
+                                            width: `${worker.bonus_progress_percent || 0}%`,
+                                            backgroundColor: worker.bonus_earned ? colors.success : colors.primary,
+                                        }
+                                    ]} />
+                                </View>
+                                <Text style={styles.workerMiniSub}>
+                                    {worker.bonus_earned
+                                        ? `🎉 План выполнен — бонус ${money(worker.bonus_amount)}`
+                                        : `${money(worker.current_month_sales)} из ${money(worker.bonus_sales_threshold)}`}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+
                         <Text style={styles.hint}>
                             Бонусы учитываются в разделе «Зарплаты» выше — переключателем можно исключить их из расчёта.
+                            Порог и процент бонуса настраиваются в профиле сотрудника на вкладке «Сотрудники».
                         </Text>
                     </View>
 
@@ -469,6 +508,18 @@ const createStyles = (colors) => StyleSheet.create({
     expenseDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
     expenseDate: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
     expenseAmount: { fontSize: 14, fontWeight: '700', color: colors.danger, marginLeft: spacing.sm },
+    workerMiniCard: {
+        backgroundColor: colors.background,
+        borderRadius: radius.lg,
+        padding: spacing.md,
+        marginBottom: spacing.sm,
+    },
+    workerMiniHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+    workerMiniName: { fontSize: 14, fontWeight: '700', color: colors.text },
+    workerMiniPercent: { fontSize: 13, fontWeight: '800', color: colors.primary },
+    workerMiniSub: { fontSize: 12, color: colors.textSecondary, marginTop: spacing.xs },
+    progressBarTrack: { height: 8, borderRadius: 4, backgroundColor: colors.borderLight, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 4 },
     modal: {
         backgroundColor: colors.card,
         borderTopLeftRadius: radius.xl,
