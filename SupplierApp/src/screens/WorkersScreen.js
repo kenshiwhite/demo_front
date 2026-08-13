@@ -204,7 +204,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.textTertiary} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>
                     Сотрудники{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
@@ -242,7 +242,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
             )}
 
             <BottomSheet visible={personModal} onClose={() => setPersonModal(false)}>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
+                <ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
                     <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Новый сотрудник</Text>
                     <InputField label="Имя / логин *" value={person.username} onChangeText={v => setPerson(p => ({ ...p, username: v }))} placeholder="Например, Айдана" autoCapitalize="words" />
@@ -252,7 +252,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                     <InputField label="Оклад в месяц (₸)" value={person.base_salary} onChangeText={v => setPerson(p => ({ ...p, base_salary: v }))} placeholder="Необязательно — для учёта расходов" keyboardType="numeric" />
                     <Button label="Создать учётную запись" onPress={savePerson} loading={saving} />
                     <Button label="Отмена" onPress={() => setPersonModal(false)} variant="ghost" />
-                </ScrollView></KeyboardAvoidingView>
+                </ScrollView>
             </BottomSheet>
 
             <BottomSheet
@@ -386,10 +386,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: spacing.md,
         paddingBottom: spacing.md,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.card,
+        backgroundColor: colors.primary,
     },
-    backBtn: { width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
-    pageHeaderTitle: { fontSize: 14, fontWeight: '700', color: colors.textTertiary },
+    backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     list: { padding: spacing.md, paddingBottom: 90 },
     card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },

@@ -227,13 +227,10 @@ export default function CartScreen({ onClose }) {
             >
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
                     <View>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        >
-                            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                                <View style={styles.modalContent}>
-                                    <View style={styles.modalHandle} />
-                                    <Text style={styles.modalTitle}>Оформление заявки</Text>
+                        <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                            <View style={styles.modalContent}>
+                                <View style={styles.modalHandle} />
+                                <Text style={styles.modalTitle}>Оформление заявки</Text>
                                     <Text style={styles.modalSubtitle}>
                                         {selectedSupplier?.supplier.name}
                                     </Text>
@@ -309,8 +306,7 @@ export default function CartScreen({ onClose }) {
                                         style={{ marginTop: spacing.sm }}
                                     />
                                 </View>
-                            </ScrollView>
-                        </KeyboardAvoidingView>
+                        </ScrollView>
                     </View>
                 </TouchableWithoutFeedback>
             </BottomSheet>
@@ -499,7 +495,7 @@ const createStyles = (colors) => StyleSheet.create({
         alignSelf: 'center',
         marginBottom: spacing.xl,
     },
-    modalTitle: { ...typography.h2, marginBottom: spacing.xs,color: colors.text },
+    modalTitle: { ...typography.h2, marginBottom: spacing.xs },
     modalSubtitle: { ...typography.bodySmall, color: colors.primary, marginBottom: spacing.xl },
     dateFieldLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.xs },
     dateField: {

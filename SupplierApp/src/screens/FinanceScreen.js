@@ -311,7 +311,6 @@ export default function FinanceScreen() {
 
             {/* Add expense sheet */}
             <BottomSheet visible={expenseModal} onClose={() => setExpenseModal(false)}>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <View style={styles.modal}>
                         <View style={styles.modalHandle} />
                         <Text style={styles.modalTitle}>Новый расход</Text>
@@ -343,7 +342,6 @@ export default function FinanceScreen() {
                         <Button label="Добавить расход" onPress={saveExpense} loading={savingExpense} style={{ marginTop: spacing.md }} />
                         <Button label="Отмена" onPress={() => setExpenseModal(false)} variant="ghost" />
                     </View>
-                </KeyboardAvoidingView>
             </BottomSheet>
 
             <BottomSheet visible={showCategoryPicker} onClose={() => setShowCategoryPicker(false)}>
@@ -376,7 +374,6 @@ export default function FinanceScreen() {
 
             {/* Add bonus sheet */}
             <BottomSheet visible={bonusModal} onClose={() => setBonusModal(false)}>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <View style={styles.modal}>
                         <View style={styles.modalHandle} />
                         <Text style={styles.modalTitle}>Новый бонус</Text>
@@ -410,7 +407,6 @@ export default function FinanceScreen() {
                         <Button label="Добавить бонус" onPress={saveBonus} loading={savingBonus} style={{ marginTop: spacing.md }} />
                         <Button label="Отмена" onPress={() => setBonusModal(false)} variant="ghost" />
                     </View>
-                </KeyboardAvoidingView>
             </BottomSheet>
 
             <BottomSheet visible={showWorkerPicker} onClose={() => setShowWorkerPicker(false)}>

@@ -766,60 +766,56 @@ export default function SupplierHomeScreen() {
             >
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
                     <View>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        >
-                            <View style={styles.modalContent}>
-                                <View style={styles.modalHandle} />
-                                <Text style={styles.modalTitle}>Ответить на заявку</Text>
-                                <View style={styles.modalInfoBox}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHandle} />
+                            <Text style={styles.modalTitle}>Ответить на заявку</Text>
+                            <View style={styles.modalInfoBox}>
+                                <View style={styles.modalInfoRow}>
+                                    <Icon name="package" size={14} color={colors.textTertiary} />
+                                    <Text style={styles.modalInfoText}>
+                                        Заявка #{selectedRequest?.id} · {selectedRequest?.items?.length || 0} товар(ов)
+                                    </Text>
+                                </View>
+                                {selectedRequest?.total_price && (
                                     <View style={styles.modalInfoRow}>
-                                        <Icon name="package" size={14} color={colors.textTertiary} />
+                                        <Icon name="trending_up" size={14} color={colors.textTertiary} />
                                         <Text style={styles.modalInfoText}>
-                                            Заявка #{selectedRequest?.id} · {selectedRequest?.items?.length || 0} товар(ов)
+                                            Сумма: {parseInt(selectedRequest.total_price).toLocaleString('ru-RU')} ₸
                                         </Text>
                                     </View>
-                                    {selectedRequest?.total_price && (
-                                        <View style={styles.modalInfoRow}>
-                                            <Icon name="trending_up" size={14} color={colors.textTertiary} />
-                                            <Text style={styles.modalInfoText}>
-                                                Сумма: {parseInt(selectedRequest.total_price).toLocaleString('ru-RU')} ₸
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                <InputField
-                                    label="Сообщение клиенту *"
-                                    value={message}
-                                    onChangeText={setMessage}
-                                    placeholder="Напишите ответ на заявку..."
-                                    multiline
-                                    numberOfLines={3}
-                                    autoCapitalize="sentences"
-                                    autoCorrect
-                                />
-                                <InputField
-                                    label="Предложить другую цену (необязательно)"
-                                    value={offeredPrice}
-                                    onChangeText={setOfferedPrice}
-                                    placeholder="0 ₸"
-                                    keyboardType="numeric"
-                                />
-                                <Button label="Отправить ответ" onPress={handleSubmitResponse} />
-                                <Button
-                                    label="Отмена"
-                                    onPress={() => {
-                                        setResponseModal(false);
-                                        setSelectedRequest(null);
-                                        setMessage('');
-                                        setOfferedPrice('');
-                                    }}
-                                    variant="ghost"
-                                    style={{ marginTop: spacing.sm }}
-                                />
+                                )}
                             </View>
-                        </KeyboardAvoidingView>
+
+                            <InputField
+                                label="Сообщение клиенту *"
+                                value={message}
+                                onChangeText={setMessage}
+                                placeholder="Напишите ответ на заявку..."
+                                multiline
+                                numberOfLines={3}
+                                autoCapitalize="sentences"
+                                autoCorrect
+                            />
+                            <InputField
+                                label="Предложить другую цену (необязательно)"
+                                value={offeredPrice}
+                                onChangeText={setOfferedPrice}
+                                placeholder="0 ₸"
+                                keyboardType="numeric"
+                            />
+                            <Button label="Отправить ответ" onPress={handleSubmitResponse} />
+                            <Button
+                                label="Отмена"
+                                onPress={() => {
+                                    setResponseModal(false);
+                                    setSelectedRequest(null);
+                                    setMessage('');
+                                    setOfferedPrice('');
+                                }}
+                                variant="ghost"
+                                style={{ marginTop: spacing.sm }}
+                            />
+                        </View>
                     </View>
                 </TouchableWithoutFeedback>
             </BottomSheet>
@@ -830,16 +826,13 @@ export default function SupplierHomeScreen() {
                 onClose={() => { setProductModal(false); setCategoryModal(false); }}
             >
                 <View>
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    <ScrollView
+                        bounces={false}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
                     >
-                        <ScrollView
-                            bounces={false}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                        >
-                            <View style={styles.productModalContent}>
-                                <View style={styles.modalHandle} />
+                        <View style={styles.productModalContent}>
+                            <View style={styles.modalHandle} />
 
                                 <View style={styles.productModalHeader}>
                                     <Text style={styles.modalTitle}>
@@ -1019,9 +1012,8 @@ export default function SupplierHomeScreen() {
                                 />
 
                                 <View style={{ height: spacing.xxxl }} />
-                            </View>
-                        </ScrollView>
-                    </KeyboardAvoidingView>
+                        </View>
+                    </ScrollView>
 
                     {categoryModal && (
                         <View style={StyleSheet.absoluteFill}>

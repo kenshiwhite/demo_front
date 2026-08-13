@@ -1,7 +1,7 @@
 // src/components/BottomSheet.js
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated, Dimensions, Easing, StyleSheet, TouchableWithoutFeedback, View,
+    Animated, Dimensions, Easing, Keyboard, Platform, StyleSheet, TouchableWithoutFeedback, View,
 } from 'react-native';
 
 const screenHeight = Dimensions.get('window').height;
@@ -21,6 +21,16 @@ const screenHeight = Dimensions.get('window').height;
 // uses that same approach. Any number of these can be open/animating at
 // once safely.
 //
+// Keyboard avoidance is handled here directly, not via a per-screen
+// KeyboardAvoidingView wrapper — KeyboardAvoidingView's internal frame
+// math gets confused when nested inside a `transform`-animated ancestor
+// (which is exactly what the open/close slide animation below is),
+// producing a sheet that floats with a visible gap above the keyboard
+// instead of sitting flush against it. Screens should NOT wrap their
+// BottomSheet children in KeyboardAvoidingView — this component already
+// shifts the whole sheet up by the keyboard's height as part of the same
+// transform used for opening/closing.
+//
 // Usage: replace
 //   <Modal visible={x} transparent animationType="slide">
 //     <View style={styles.modalOverlay}>...</View>
@@ -28,11 +38,13 @@ const screenHeight = Dimensions.get('window').height;
 // with
 //   <BottomSheet visible={x} onClose={() => setX(false)}>
 //     ...same content that used to be inside modalOverlay, minus the
-//     outer overlay View (BottomSheet supplies the dim backdrop itself)...
+//     outer overlay View (BottomSheet supplies the dim backdrop itself)
+//     and minus any KeyboardAvoidingView wrapper...
 //   </BottomSheet>
 export default function BottomSheet({ visible, onClose, children, dismissible = true, zIndex = 1000 }) {
     const [rendered, setRendered] = useState(visible);
     const translateY = useRef(new Animated.Value(screenHeight)).current;
+    const keyboardShift = useRef(new Animated.Value(0)).current;
     const overlayOpacity = useRef(new Animated.Value(0)).current;
     const cachedChildren = useRef(children);
 
@@ -64,6 +76,30 @@ export default function BottomSheet({ visible, onClose, children, dismissible = 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]);
 
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const onShow = (e) => {
+            Animated.timing(keyboardShift, {
+                toValue: -(e.endCoordinates?.height || 0),
+                duration: Platform.OS === 'ios' ? (e.duration || 250) : 200,
+                useNativeDriver: true,
+            }).start();
+        };
+        const onHide = (e) => {
+            Animated.timing(keyboardShift, {
+                toValue: 0,
+                duration: Platform.OS === 'ios' ? (e.duration || 250) : 200,
+                useNativeDriver: true,
+            }).start();
+        };
+
+        const showSub = Keyboard.addListener(showEvent, onShow);
+        const hideSub = Keyboard.addListener(hideEvent, onHide);
+        return () => { showSub.remove(); hideSub.remove(); };
+    }, [keyboardShift]);
+
     if (!rendered) return null;
 
     return (
@@ -72,7 +108,7 @@ export default function BottomSheet({ visible, onClose, children, dismissible = 
                 <Animated.View style={[styles.backdrop, { opacity: overlayOpacity }]} />
             </TouchableWithoutFeedback>
             <Animated.View
-                style={[styles.sheet, { transform: [{ translateY }] }]}
+                style={[styles.sheet, { transform: [{ translateY: Animated.add(translateY, keyboardShift) }] }]}
                 pointerEvents="box-none"
             >
                 {cachedChildren.current}

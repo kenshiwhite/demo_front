@@ -785,14 +785,11 @@ export default function ClientHomeScreen() {
             >
                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
                     <View>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        >
-                            <View style={styles.modalContent}>
-                                <View style={styles.modalHandle} />
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHandle} />
 
-                                {selectedProductForCart?.image ? (
-                                    <Image
+                            {selectedProductForCart?.image ? (
+                                <Image
                                         source={{ uri: selectedProductForCart.image }}
                                         style={styles.modalProductImage}
                                         resizeMode="cover"
@@ -873,7 +870,6 @@ export default function ClientHomeScreen() {
                                     style={{ marginTop: spacing.sm }}
                                 />
                             </View>
-                        </KeyboardAvoidingView>
                     </View>
                 </TouchableWithoutFeedback>
             </BottomSheet>
