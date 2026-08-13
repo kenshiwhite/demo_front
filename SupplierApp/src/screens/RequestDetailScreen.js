@@ -3,6 +3,7 @@ import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, Alert, Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { InputField, Button, SectionTitle, Divider } from '../components/UI';
@@ -35,6 +36,43 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
     const [showAssignPicker, setShowAssignPicker] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [assignPermanently, setAssignPermanently] = useState(false);
+
+    const [photoReports, setPhotoReports] = useState(request.photo_reports || []);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+    const handleAddPhotoReport = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert('Нет доступа', 'Разрешите доступ к фото в настройках');
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.7,
+        });
+        if (result.canceled) return;
+
+        setUploadingPhoto(true);
+        try {
+            const formData = new FormData();
+            formData.append('image', {
+                uri: result.assets[0].uri,
+                type: 'image/jpeg',
+                name: 'photo_report.jpg',
+            });
+            const { data } = await client.post(
+                `/api/requests/${request.id}/photo_reports/`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            setPhotoReports(prev => [data, ...prev]);
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось загрузить фото');
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
 
     const loadWorkers = async () => {
         if (workersLoaded) return;
@@ -135,16 +173,16 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-                    <Icon name="chevronLeft" size={22} color={colors.text} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Заявка #{request.id}</Text>
                 {isEditable && !editing ? (
                     <TouchableOpacity onPress={() => setEditing(true)} style={styles.headerBtn}>
-                        <Icon name="edit" size={18} color={colors.text} />
+                        <Icon name="edit" size={18} color="#fff" />
                     </TouchableOpacity>
                 ) : editing ? (
                     <TouchableOpacity onPress={handleSave} style={styles.headerBtn}>
-                        <Icon name="check" size={20} color={colors.text} />
+                        <Icon name="check" size={20} color="#fff" />
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.headerBtn} />
@@ -393,6 +431,42 @@ export default function RequestDetailScreen({ request, onClose, onUpdate }) {
                     )}
                 </View>
 
+                {/* Photo reports */}
+                <View style={styles.section}>
+                    <View style={styles.photoSectionHeader}>
+                        <SectionTitle label={`Фотоотчёт${photoReports.length ? ` (${photoReports.length})` : ''}`} />
+                        {isSupplierStaff && (
+                            <TouchableOpacity
+                                style={styles.addPhotoBtn}
+                                onPress={handleAddPhotoReport}
+                                disabled={uploadingPhoto}
+                            >
+                                <Icon name="plus" size={14} color={colors.primary} />
+                                <Text style={styles.addPhotoBtnText}>
+                                    {uploadingPhoto ? 'Загрузка...' : 'Добавить фото'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    {photoReports.length === 0 ? (
+                        <Text style={styles.noteText}>Фотоотчётов пока нет</Text>
+                    ) : (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm }}>
+                            {photoReports.map(report => (
+                                <View key={report.id} style={styles.photoReportItem}>
+                                    <Image source={{ uri: report.image }} style={styles.photoReportImage} />
+                                    <Text style={styles.photoReportDate}>
+                                        {new Date(report.created_at).toLocaleDateString('ru-RU')}
+                                    </Text>
+                                    {report.uploaded_by_name ? (
+                                        <Text style={styles.photoReportAuthor} numberOfLines={1}>{report.uploaded_by_name}</Text>
+                                    ) : null}
+                                </View>
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
+
                 {request.status === 'cancelled' && (
                     <View style={styles.section}>
                         <SectionTitle label="Отмена" />
@@ -460,10 +534,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: STATUS_TOP,
         paddingBottom: spacing.lg,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.card,
+        backgroundColor: colors.primary,
     },
     headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     body: { flex: 1 },
     statusBanner: {
         flexDirection: 'row',
@@ -535,6 +609,21 @@ const createStyles = (colors) => StyleSheet.create({
     totalLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
     totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
     noteText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    photoSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    addPhotoBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: colors.primaryLight,
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 6,
+    },
+    addPhotoBtnText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+    photoReportItem: { marginRight: spacing.sm, width: 110 },
+    photoReportImage: { width: 110, height: 110, borderRadius: radius.md, backgroundColor: colors.borderLight },
+    photoReportDate: { fontSize: 11, color: colors.textSecondary, marginTop: 4, fontWeight: '600' },
+    photoReportAuthor: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
     cancelledAt: { fontSize: 12, color: colors.textTertiary, marginTop: spacing.sm },
     cancelRequestBtn: {
         flexDirection: 'row',

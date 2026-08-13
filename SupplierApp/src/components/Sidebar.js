@@ -1,7 +1,7 @@
 // SupplierApp/src/components/Sidebar.js
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated, Dimensions, Easing, Image, StyleSheet,
+    Alert, Animated, Dimensions, Easing, Image, StyleSheet,
     Text, TouchableOpacity, TouchableWithoutFeedback, View
 } from 'react-native';
 import Icon from './Icon';
@@ -65,7 +65,14 @@ export default function Sidebar({
 
     const handleLogout = () => {
         onClose();
-        onLogout?.();
+        Alert.alert(
+            'Выход из аккаунта',
+            'Вы уверены, что хотите выйти?',
+            [
+                { text: 'Отмена', style: 'cancel' },
+                { text: 'Выйти', style: 'destructive', onPress: () => onLogout?.() },
+            ]
+        );
     };
 
     const items = MENU_ITEMS.filter((item) => {

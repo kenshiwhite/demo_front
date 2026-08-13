@@ -574,50 +574,6 @@ export default function SupplierHomeScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            {/* <View style={styles.header}>
-                <View style={styles.headerIdentity}>
-                    <Text style={styles.headerGreeting}>Добро пожаловать</Text>
-                    <Text style={styles.headerName} numberOfLines={1}>
-                        {user?.company_name || user?.username}
-                    </Text>
-                </View>
-                <View style={styles.headerActions}> */}
-                    {/* <TouchableOpacity
-                        style={styles.headerIconBtn}
-                        onPress={() => setShowCalendar(true)}
-                    >
-                        <Icon name="calendar" size={20} color="#fff" />
-                    </TouchableOpacity> */}
-                    {/* <TouchableOpacity
-                        style={styles.headerIconBtn}
-                        onPress={() => setShowAnalytics(true)}
-                    >
-                        <Icon name="bar_chart" size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.headerIconBtn}
-                        onPress={() => {
-                            setShowNotifications(true);
-                            loadUnreadCount();
-                        }}
-                    >
-                        <Icon name="bell" size={20} color="#fff" />
-                        {unreadCount > 0 && (
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>
-                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                </Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.headerIconBtn}
-                        onPress={() => setShowProfile(true)}
-                    >
-                        <Icon name="user" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-            </View> */}
             <View style={styles.header}>
                 <View style={styles.headerIdentity}>
                     <TouchableOpacity
@@ -633,9 +589,6 @@ export default function SupplierHomeScreen() {
                             <Icon name="chevronRight" size={11} color="rgba(255,255,255,0.8)" />
                         )}
                     </TouchableOpacity>
-                    <Text style={styles.headerName} numberOfLines={1}>
-                        {user?.company_name || user?.username}
-                    </Text>
                 </View>
                 <View style={styles.headerActions}>
                     <TouchableOpacity
@@ -1205,13 +1158,12 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingTop: STATUS_TOP,
-        paddingBottom: spacing.lg,
+        paddingBottom: spacing.sm,
         paddingHorizontal: spacing.lg,
         backgroundColor: colors.primary,
     },
     headerGreeting: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
-    headerIdentity: { flex: 1, minWidth: 0, marginRight: spacing.sm },
-    headerName: { fontSize: 18, fontWeight: '700', color: '#fff', maxWidth: 180 },
+    headerIdentity: { flexDirection: 'row', alignItems: 'center' },
     headerActions: { flexDirection: 'row', gap: spacing.sm },
     headerIconBtn: {
         width: 38,
@@ -1654,13 +1606,11 @@ const createStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.xs,
+        height: 38,
         backgroundColor: 'rgba(255,255,255,0.15)',
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
         borderRadius: radius.full,
         maxWidth: 160,
-        alignSelf: 'flex-start',
-        marginBottom: 4,
     },
     cityLabel: {
         fontSize: 13,
