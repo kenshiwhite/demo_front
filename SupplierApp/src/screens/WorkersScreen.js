@@ -1,5 +1,5 @@
 // SupplierApp/src/screens/WorkersScreen.js
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import {
     Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
     StyleSheet, Text, TouchableOpacity, View
@@ -75,8 +75,10 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
         }
     };
 
+    const hasLoadedOnce = useRef(false);
+
     const load = useCallback(async () => {
-        setLoading(true);
+        if (!hasLoadedOnce.current) setLoading(true);
         try {
             const cityParams = activeCity ? { city: activeCity } : {};
             const [workersRes, clientsRes, requestsRes] = await Promise.all([
@@ -91,6 +93,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
             Alert.alert('Ошибка', 'Не удалось загрузить список сотрудников');
         } finally {
             setLoading(false);
+            hasLoadedOnce.current = true;
         }
     }, [activeCity]);
 

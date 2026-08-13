@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useCity } from '../context/CityContext';
 import CitySelectScreen from './CitySelectScreen';
 import {
@@ -110,8 +110,11 @@ export default function ClientHomeScreen() {
         }
     };
 
+    const hasLoadedProductsOnce = useRef(false);
+    const hasLoadedRequestsOnce = useRef(false);
+
     const loadAllProducts = async (searchText = '', filters = currentFilters()) => {
-        setLoading(true);
+        if (!hasLoadedProductsOnce.current) setLoading(true);
         try {
             const data = await getAllProducts(searchText, selectedCity, filters);
             setProducts(data.results || data);
@@ -119,12 +122,13 @@ export default function ClientHomeScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
+            hasLoadedProductsOnce.current = true;
         }
     };
 
 
     const loadSupplierProducts = async (supplierId, searchText = '', filters = currentFilters()) => {
-        setLoading(true);
+        if (!hasLoadedProductsOnce.current) setLoading(true);
         try {
             const data = await getProducts(supplierId, searchText, filters);
             setProducts(data.results || data);
@@ -132,11 +136,12 @@ export default function ClientHomeScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
+            hasLoadedProductsOnce.current = true;
         }
     };
 
     const loadMyRequests = async () => {
-        setLoading(true);
+        if (!hasLoadedRequestsOnce.current) setLoading(true);
         try {
             const data = await getMyRequests();
             setMyRequests(data.results || data);
@@ -144,6 +149,7 @@ export default function ClientHomeScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить заявки');
         } finally {
             setLoading(false);
+            hasLoadedRequestsOnce.current = true;
         }
     };
 

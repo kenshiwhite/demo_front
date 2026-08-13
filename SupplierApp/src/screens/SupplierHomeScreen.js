@@ -120,8 +120,11 @@ export default function SupplierHomeScreen() {
         return true;
     });
 
+    const hasLoadedRequestsOnce = useRef(false);
+    const hasLoadedProductsOnce = useRef(false);
+
     const loadRequests = async () => {
-        setLoading(true);
+        if (!hasLoadedRequestsOnce.current) setLoading(true);
         try {
             const response = await client.get('/api/requests/', {
                 params: activeCity ? { city: activeCity } : {},
@@ -131,11 +134,12 @@ export default function SupplierHomeScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить заявки');
         } finally {
             setLoading(false);
+            hasLoadedRequestsOnce.current = true;
         }
     };
 
     const loadProducts = async () => {
-        setLoading(true);
+        if (!hasLoadedProductsOnce.current) setLoading(true);
         try {
             const response = await client.get('/api/catalog/products/', {
                 params: activeCity ? { city: activeCity } : {},
@@ -145,6 +149,7 @@ export default function SupplierHomeScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить товары');
         } finally {
             setLoading(false);
+            hasLoadedProductsOnce.current = true;
         }
     };
 

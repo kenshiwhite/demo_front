@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import {
     Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
     StyleSheet, Text, TouchableOpacity, View
@@ -36,8 +36,10 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
     const [showRepPicker, setShowRepPicker] = useState(false);
     const [assigningRep, setAssigningRep] = useState(false);
 
+    const hasLoadedOnce = useRef(false);
+
     const load = useCallback(async () => {
-        setLoading(true);
+        if (!hasLoadedOnce.current) setLoading(true);
         try {
             const cityParams = activeCity ? { city: activeCity } : {};
             const [clientsRes, productsRes, requestsRes] = await Promise.all([
@@ -52,6 +54,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
             Alert.alert('Ошибка', 'Не удалось загрузить список клиентов');
         } finally {
             setLoading(false);
+            hasLoadedOnce.current = true;
         }
         // Workers are only needed for the rep-assignment picker — fetched
         // separately so a failure here (permissions, network) never blocks
@@ -178,6 +181,25 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
         return map;
     }, [clients, requests]);
 
+    // Photo reports across all of a client's requests, newest first —
+    // matched the same way as clientStatsMap above.
+    const clientPhotosMap = useMemo(() => {
+        const map = {};
+        for (const r of requests) {
+            if (!r.photo_reports?.length) continue;
+            const key = r.business_client
+                ? `business-${r.business_client}`
+                : r.client ? `registered-${r.client}` : null;
+            if (!key) continue;
+            if (!map[key]) map[key] = [];
+            map[key].push(...r.photo_reports);
+        }
+        for (const key in map) {
+            map[key].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+        return map;
+    }, [requests]);
+
     const formatMoney = (n) => `${Math.round(n).toLocaleString('ru-RU')} ₸`;
 
     const renderClient = ({ item }) => {
@@ -218,7 +240,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
         <View style={styles.container}>
             <View style={styles.pageHeader}>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={10}>
-                    <Icon name="chevronLeft" size={22} color={colors.text} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.pageHeaderTitle}>
                     Клиенты{serviceCities.length > 1 && activeCity ? ` · ${cityLabel(activeCity)}` : ''}
@@ -365,6 +387,26 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                                         <Text style={styles.statLabel}>Всего потрачено</Text>
                                         <Text style={styles.revenueValue}>{formatMoney(stats.totalSpent)}</Text>
                                     </View>
+
+                                    {(() => {
+                                        const photos = clientPhotosMap[clientKey(selectedClient)] || [];
+                                        if (photos.length === 0) return null;
+                                        return (
+                                            <>
+                                                <Text style={styles.sectionTitle}>Фотоотчёты ({photos.length})</Text>
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
+                                                    {photos.map(report => (
+                                                        <View key={report.id} style={styles.clientPhotoItem}>
+                                                            <Image source={{ uri: report.image }} style={styles.clientPhotoImage} />
+                                                            <Text style={styles.clientPhotoDate}>
+                                                                {new Date(report.created_at).toLocaleDateString('ru-RU')}
+                                                            </Text>
+                                                        </View>
+                                                    ))}
+                                                </ScrollView>
+                                            </>
+                                        );
+                                    })()}
 
                                     <Text style={styles.sectionTitle}>Контакты</Text>
                                     <View style={styles.contactRow}>
@@ -528,6 +570,9 @@ const createStyles = (colors) => StyleSheet.create({
     statLabel: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
     revenueCard: { backgroundColor: colors.successLight, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
     revenueValue: { color: colors.success, fontSize: 20, fontWeight: '800', marginTop: 3 },
+    clientPhotoItem: { marginRight: spacing.sm, width: 100 },
+    clientPhotoImage: { width: 100, height: 100, borderRadius: radius.md, backgroundColor: colors.borderLight },
+    clientPhotoDate: { fontSize: 11, color: colors.textSecondary, marginTop: 4, fontWeight: '600' },
     productRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
     qtyBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
     qty: { width: 28, textAlign: 'center', color: colors.text, fontWeight: '700' },

@@ -16,13 +16,14 @@ export const lightColors = {
     purpleLight: '#EDE9FE',
     white: '#FFFFFF',
     background: '#F8F9FF',
-    card: '#FFFFFF',
+    card: '#ffffff',
     border: '#E5E7EB',
     borderLight: '#F3F4F6',
     text: '#111827',
     textSecondary: '#6B7280',
     textTertiary: '#9CA3AF',
     placeholder: '#9CA3AF',
+    headerone: '#dcdcdc79',
 };
 
 export const darkColors = {

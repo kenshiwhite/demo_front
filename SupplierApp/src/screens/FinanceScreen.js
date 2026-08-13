@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     StyleSheet, ActivityIndicator, Alert, Switch, KeyboardAvoidingView, Platform
@@ -52,8 +52,10 @@ export default function FinanceScreen() {
     const [showWorkerPicker, setShowWorkerPicker] = useState(false);
     const [savingBonus, setSavingBonus] = useState(false);
 
+    const hasLoadedOnce = useRef(false);
+
     const load = useCallback(async () => {
-        setLoading(true);
+        if (!hasLoadedOnce.current) setLoading(true);
         try {
             const [summaryRes, expensesRes, workersRes] = await Promise.all([
                 client.get('/api/finance/summary/', { params: { period, include_bonuses: includeBonuses } }),
@@ -67,6 +69,7 @@ export default function FinanceScreen() {
             Alert.alert('Ошибка', 'Не удалось загрузить финансовые данные');
         } finally {
             setLoading(false);
+            hasLoadedOnce.current = true;
         }
     }, [period, includeBonuses]);
 

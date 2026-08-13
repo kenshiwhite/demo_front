@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import {
     View, Text, ScrollView, TouchableOpacity,
@@ -46,8 +46,10 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
             .catch(() => setRepStats(null));
     }, [isRep]);
 
+    const hasLoadedOnce = useRef(false);
+
     const loadData = async () => {
-        setLoading(true);
+        if (!hasLoadedOnce.current) setLoading(true);
         try {
             const cityParams = activeCity ? { city: activeCity } : {};
             const [productsRes, requestsRes] = await Promise.all([
@@ -64,6 +66,7 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
             console.log('Error loading home data:', e);
         } finally {
             setLoading(false);
+            hasLoadedOnce.current = true;
         }
     };
 

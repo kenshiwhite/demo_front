@@ -509,6 +509,10 @@ export default function ProfileScreen({ onClose, initialShowSettings = false }) 
             <ScreenOverlay visible={showSettings} zIndex={9999}>
                 <SettingsScreen onClose={() => setShowSettings(false)} />
             </ScreenOverlay>
+
+            <Text style={{ position: 'absolute', bottom: 10, alignSelf: 'center', color: colors.textTertiary, fontSize: 8 }}>
+                © 2026 Yessimkhan A. All rights reserved.
+            </Text>
         </View>
     );
 }
