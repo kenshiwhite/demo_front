@@ -702,6 +702,7 @@ export default function SupplierHomeScreen() {
                     onRequestPress={(request) => setCalendarSelectedRequest(request)}
                     activeCity={activeCity}
                     onOpenRepStats={() => setShowRepStats(true)}
+                    onOpenProducts={() => setView('products')}
                 />
             ) : loading ? (
                 <View style={styles.loadingContainer}>

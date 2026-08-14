@@ -21,7 +21,7 @@ LocaleConfig.locales['ru'] = {
 };
 LocaleConfig.defaultLocale = 'ru';
 
-export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepStats }) {
+export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepStats, onOpenProducts }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { user } = useAuth();
@@ -195,6 +195,31 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
                                 <Text style={styles.statsWidgetLabel}>Клиентов</Text>
                             </View>
                         </View>
+
+                        {repStats.bonus_sales_threshold ? (
+                            <View style={styles.bonusProgressWrap}>
+                                <View style={styles.bonusProgressHeader}>
+                                    <Text style={styles.bonusProgressLabel}>
+                                        {parseInt(repStats.current_month_sales || 0).toLocaleString('ru-RU')} ₸ из {parseInt(repStats.bonus_sales_threshold).toLocaleString('ru-RU')} ₸
+                                    </Text>
+                                    <Text style={styles.bonusProgressPercent}>{repStats.bonus_progress_percent || 0}%</Text>
+                                </View>
+                                <View style={styles.bonusProgressTrack}>
+                                    <View style={[
+                                        styles.bonusProgressFill,
+                                        {
+                                            width: `${repStats.bonus_progress_percent || 0}%`,
+                                            backgroundColor: repStats.bonus_earned ? '#fff' : 'rgba(255,255,255,0.6)',
+                                        }
+                                    ]} />
+                                </View>
+                                <Text style={styles.bonusProgressCaption}>
+                                    {repStats.bonus_earned
+                                        ? `🎉 План на этот месяц выполнен — бонус ${parseInt(repStats.bonus_amount || 0).toLocaleString('ru-RU')} ₸`
+                                        : `${repStats.bonus_percent}% от оклада за выполнение плана`}
+                                </Text>
+                            </View>
+                        ) : null}
                     </TouchableOpacity>
                 )}
 
@@ -202,19 +227,24 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
                 {lowStockProducts.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <View style={[styles.sectionIconBox, { backgroundColor: colors.warningLight }]}>
-                                <Icon name="warning" size={16} color={colors.warning} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.sectionTitle}>Остатки на складе</Text>
-                                <Text style={styles.sectionSub}>
-                                    {outOfStockCount > 0
-                                        ? `${outOfStockCount} товар(ов) закончилось`
-                                        : `${lowStockProducts.length} товар(ов) заканчивается`}
-                                </Text>
-                            </View>
-                            <TouchableOpacity onPress={loadData}>
+                            <TouchableOpacity style={styles.sectionHeaderTap} onPress={onOpenProducts} activeOpacity={0.7}>
+                                <View style={[styles.sectionIconBox, { backgroundColor: colors.warningLight }]}>
+                                    <Icon name="warning" size={16} color={colors.warning} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Остатки на складе</Text>
+                                    <Text style={styles.sectionSub}>
+                                        {outOfStockCount > 0
+                                            ? `${outOfStockCount} товар(ов) закончилось`
+                                            : `${lowStockProducts.length} товар(ов) заканчивается`}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={loadData} hitSlop={8}>
                                 <Icon name="refresh" size={16} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={onOpenProducts} hitSlop={8} style={{ marginLeft: spacing.sm }}>
+                                <Icon name="chevronRight" size={16} color={colors.textTertiary} />
                             </TouchableOpacity>
                         </View>
 
@@ -253,7 +283,7 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
                 )}
 
                 {/* All products sorted by stock */}
-                <View style={styles.section}>
+                <TouchableOpacity style={styles.section} onPress={onOpenProducts} activeOpacity={0.7}>
                     <View style={styles.sectionHeader}>
                         <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
                             <Icon name="layers" size={16} color={colors.primary} />
@@ -262,6 +292,7 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
                             <Text style={styles.sectionTitle}>Все товары по остаткам</Text>
                             <Text style={styles.sectionSub}>{products.length} товаров, по возрастанию</Text>
                         </View>
+                        <Icon name="chevronRight" size={16} color={colors.textTertiary} />
                     </View>
 
                     {products.slice(0, 8).map((product) => {
@@ -298,7 +329,7 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
                             </Text>
                         </View>
                     )}
-                </View>
+                </TouchableOpacity>
 
                 {/* Calendar */}
                 <View style={styles.section}>
@@ -317,6 +348,7 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
                             onDayPress={handleDayPress}
                             markedDates={markedDates}
                             markingType="multi-dot"
+                            firstDay={1}
                             theme={{
                                 backgroundColor: colors.card,
                                 calendarBackground: colors.card,
@@ -456,6 +488,13 @@ const createStyles = (colors) => StyleSheet.create({
     statsWidgetValue: { fontSize: 16, fontWeight: '700', color: '#fff' },
     statsWidgetLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
     statsWidgetDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.25)' },
+    bonusProgressWrap: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' },
+    bonusProgressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+    bonusProgressLabel: { fontSize: 12, fontWeight: '700', color: '#fff' },
+    bonusProgressPercent: { fontSize: 12, fontWeight: '800', color: '#fff' },
+    bonusProgressTrack: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
+    bonusProgressFill: { height: '100%', borderRadius: 4 },
+    bonusProgressCaption: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: spacing.xs },
     section: {
         backgroundColor: colors.card,
         marginHorizontal: spacing.lg,
@@ -469,6 +508,12 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         gap: spacing.md,
         marginBottom: spacing.lg,
+    },
+    sectionHeaderTap: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
     },
     sectionIconBox: {
         width: 36,
