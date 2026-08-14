@@ -34,17 +34,29 @@ export default function NotificationsScreen({ onClose }) {
     };
 
     const handleMarkRead = async (id) => {
+        const wasUnread = notifications.find(n => n.id === id && !n.is_read);
+        setNotifications(current => current.map(n => n.id === id ? { ...n, is_read: true } : n));
+        if (wasUnread) setUnreadCount(count => Math.max(0, count - 1));
         try {
             await client.post(`/api/notifications/${id}/mark_read/`);
-            loadNotifications();
-        } catch (e) {}
+        } catch (e) {
+            // Roll back on failure so the UI doesn't silently lie about state
+            setNotifications(current => current.map(n => n.id === id ? { ...n, is_read: false } : n));
+            if (wasUnread) setUnreadCount(count => count + 1);
+        }
     };
 
     const handleMarkAllRead = async () => {
+        const previous = notifications;
+        const previousUnread = unreadCount;
+        setNotifications(current => current.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
         try {
             await client.post('/api/notifications/mark_all_read/');
-            loadNotifications();
-        } catch (e) {}
+        } catch (e) {
+            setNotifications(previous);
+            setUnreadCount(previousUnread);
+        }
     };
 
     const getTypeConfig = (type) => {
@@ -53,6 +65,7 @@ export default function NotificationsScreen({ onClose }) {
             request_accepted: { color: colors.success, icon: 'check' },
             request_declined: { color: colors.danger, icon: 'x' },
             request_fulfilled: { color: colors.purple, icon: 'truck' },
+            request_cancelled: { color: colors.danger, icon: 'x' },
             new_response: { color: colors.warning, icon: 'mail' },
         };
         return configs[type] || { color: colors.textSecondary, icon: 'bell' };
