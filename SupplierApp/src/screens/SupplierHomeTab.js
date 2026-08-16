@@ -141,7 +141,8 @@ export default function SupplierHomeTab({ onRequestPress, activeCity, onOpenRepS
     };
 
     const selectedDateRequests = selectedDate ? (requestsByDate[selectedDate] || []) : [];
-    const lowStockProducts = products.filter(p => p.stock_quantity <= 10);
+    const lowStockThreshold = user?.low_stock_threshold ?? 10;
+    const lowStockProducts = products.filter(p => p.stock_quantity <= lowStockThreshold);
     const outOfStockCount = products.filter(p => p.stock_quantity === 0).length;
 
     const formatDate = (dateStr) => {

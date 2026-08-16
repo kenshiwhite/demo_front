@@ -8,14 +8,37 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { spacing, radius, STATUS_TOP, shadow } from '../styles/theme';
 import Icon from '../components/Icon';
+import { InputField, Button } from '../components/UI';
 
 export default function SettingsScreen({ onClose }) {
-    const { signOut } = useAuth();
+    const { signOut, signIn, user } = useAuth();
     const { mode, colors, setThemeMode } = useTheme();
     const { language, languages, t, setLanguage } = useLanguage();
     const [deleting, setDeleting] = useState(false);
+    const [lowStockThreshold, setLowStockThreshold] = useState(
+        user?.low_stock_threshold != null ? String(user.low_stock_threshold) : '10'
+    );
+    const [savingThreshold, setSavingThreshold] = useState(false);
 
     const styles = useMemo(() => createStyles(colors), [colors]);
+
+    const handleSaveLowStockThreshold = async () => {
+        const value = parseInt(lowStockThreshold);
+        if (isNaN(value) || value < 0) {
+            Alert.alert('Ошибка', 'Введите корректное число.');
+            return;
+        }
+        setSavingThreshold(true);
+        try {
+            const { data } = await client.patch('/api/auth/profile/', { low_stock_threshold: value });
+            await signIn(data);
+            Alert.alert('Готово', 'Порог низкого остатка обновлён.');
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось сохранить.');
+        } finally {
+            setSavingThreshold(false);
+        }
+    };
 
     const handleDeleteAccount = () => {
         Alert.alert(
@@ -49,7 +72,7 @@ export default function SettingsScreen({ onClose }) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-                    <Icon name="chevronLeft" size={22} color={colors.text} />
+                    <Icon name="chevronLeft" size={22} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>{t('settings.title')}</Text>
                 <View style={styles.headerBtn} />
@@ -108,6 +131,31 @@ export default function SettingsScreen({ onClose }) {
                     })}
                 </View>
 
+                {/* Stock threshold — supplier only */}
+                {user?.role === 'supplier' && (
+                    <>
+                        <Text style={styles.sectionLabel}>Склад</Text>
+                        <View style={[styles.card, { padding: spacing.lg }]}>
+                            <Text style={styles.thresholdDesc}>
+                                Товары с остатком равным или ниже этого числа будут отмечены как заканчивающиеся — для вас и ваших сотрудников.
+                            </Text>
+                            <InputField
+                                label="Порог низкого остатка"
+                                value={lowStockThreshold}
+                                onChangeText={setLowStockThreshold}
+                                placeholder="10"
+                                keyboardType="numeric"
+                            />
+                            <Button
+                                label="Сохранить"
+                                onPress={handleSaveLowStockThreshold}
+                                loading={savingThreshold}
+                                variant="secondary"
+                            />
+                        </View>
+                    </>
+                )}
+
                 {/* Account */}
                 <Text style={styles.sectionLabel}>{t('settings.account')}</Text>
                 <View style={styles.card}>
@@ -142,10 +190,10 @@ const createStyles = (colors) => StyleSheet.create({
         paddingTop: STATUS_TOP,
         paddingBottom: spacing.lg,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.card,
+        backgroundColor: colors.primary,
     },
     headerBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
     body: { flex: 1, padding: spacing.lg },
     sectionLabel: {
         fontSize: 11,
@@ -198,4 +246,5 @@ const createStyles = (colors) => StyleSheet.create({
         paddingVertical: spacing.lg,
     },
     deleteText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
+    thresholdDesc: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginBottom: spacing.md },
 });

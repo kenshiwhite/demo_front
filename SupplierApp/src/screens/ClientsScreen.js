@@ -100,10 +100,21 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
         setRequestModal(true);
     };
 
-    const changeQuantity = (id, delta) => setQuantities(current => ({
-        ...current,
-        [id]: Math.max(0, (current[id] || 0) + delta),
-    }));
+    const changeQuantity = (id, delta) => {
+        const product = products.find(p => p.id === id);
+        const min = product?.min_order_quantity || 1;
+        setQuantities(current => {
+            const existing = current[id] || 0;
+            let next;
+            if (delta > 0) {
+                next = existing === 0 ? min : existing + delta;
+            } else {
+                next = existing - Math.abs(delta);
+                if (next < min) next = 0; // dropping below the minimum removes it
+            }
+            return { ...current, [id]: Math.max(0, next) };
+        });
+    };
 
     const createRequest = async () => {
         const items = products.filter(p => quantities[p.id] > 0).map(p => ({ product_id: p.id, quantity: quantities[p.id] }));
@@ -303,6 +314,9 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.name}>{product.name}</Text>
                                 <Text style={styles.muted}>{product.stock_quantity} {product.unit} · {Number(product.price).toLocaleString('ru-RU')} ₸</Text>
+                                {product.min_order_quantity > 1 ? (
+                                    <Text style={styles.moqHint}>Мин. заказ: {product.min_order_quantity} {product.unit}</Text>
+                                ) : null}
                             </View>
                             <TouchableOpacity style={styles.qtyBtn} onPress={() => changeQuantity(product.id, -1)}><Icon name="minus" size={15} color={colors.primary} /></TouchableOpacity>
                             <Text style={styles.qty}>{quantities[product.id] || 0}</Text>
@@ -501,7 +515,7 @@ export default function ClientsScreen({ onBack, activeCity, serviceCities = [] }
                                     disabled={assigningRep}
                                 >
                                     <View style={{ flex: 1 }}>
-                                        <Text style={styles.repOptionText}>{worker.username}</Text>
+                                        <Text style={styles.repOptionText}>{worker.first_name || worker.username}</Text>
                                         {worker.city_display ? <Text style={styles.muted}>{worker.city_display}</Text> : null}
                                     </View>
                                     {active && <Icon name="check" size={18} color={colors.primary} />}
@@ -539,6 +553,7 @@ const createStyles = (colors) => StyleSheet.create({
     avatarText: { color: colors.primary, fontWeight: '800', fontSize: 17 },
     name: { color: colors.text, fontWeight: '700', fontSize: 15 },
     muted: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
+    moqHint: { color: colors.warning, fontSize: 11, fontWeight: '600', marginTop: 2 },
     detail: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
     assigned: { color: colors.primary, fontSize: 12, marginTop: spacing.sm },
     count: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4 },

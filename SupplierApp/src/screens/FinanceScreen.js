@@ -279,7 +279,7 @@ export default function FinanceScreen() {
                                 }}
                             >
                                 <View style={styles.workerMiniHeader}>
-                                    <Text style={styles.workerMiniName}>{worker.username}</Text>
+                                    <Text style={styles.workerMiniName}>{worker.first_name || worker.username}</Text>
                                     <Text style={styles.workerMiniPercent}>{worker.bonus_progress_percent || 0}%</Text>
                                 </View>
                                 <View style={styles.progressBarTrack}>
@@ -420,7 +420,7 @@ export default function FinanceScreen() {
                                 style={[styles.pickerOption, bonusForm.worker === worker.id && styles.pickerOptionActive]}
                                 onPress={() => { setBonusForm(f => ({ ...f, worker: worker.id })); setShowWorkerPicker(false); }}
                             >
-                                <Text style={styles.pickerOptionText}>{worker.username}</Text>
+                                <Text style={styles.pickerOptionText}>{worker.first_name || worker.username}</Text>
                                 {bonusForm.worker === worker.id && <Icon name="check" size={18} color={colors.primary} />}
                             </TouchableOpacity>
                         ))}

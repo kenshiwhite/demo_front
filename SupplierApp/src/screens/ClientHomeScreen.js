@@ -232,7 +232,7 @@ export default function ClientHomeScreen() {
 
     const handleAddToCart = (item) => {
         setSelectedProductForCart(item);
-        setCartQuantity('1');
+        setCartQuantity(String(item.min_order_quantity || 1));
         setQuantityModal(true);
     };
 
@@ -244,6 +244,11 @@ export default function ClientHomeScreen() {
         }
         if (qty > selectedProductForCart.stock_quantity) {
             Alert.alert('Ошибка', `Максимальное количество: ${selectedProductForCart.stock_quantity}`);
+            return;
+        }
+        const minQty = selectedProductForCart.min_order_quantity || 1;
+        if (qty < minQty) {
+            Alert.alert('Ошибка', `Минимальное количество для заказа: ${minQty} ${selectedProductForCart.unit}`);
             return;
         }
         addToCart(selectedProductForCart, qty);
@@ -813,20 +818,27 @@ export default function ClientHomeScreen() {
                                             {parseInt(selectedProductForCart?.price || 0).toLocaleString('ru-RU')} ₸ / {selectedProductForCart?.unit}
                                         </Text>
                                     </View>
-                                    <View style={styles.priceInfoDivider} />
-                                    <View style={styles.priceInfoItem}>
-                                        <Text style={styles.priceInfoLabel}>Доступно</Text>
-                                        <Text style={styles.priceInfoValue}>
-                                            {selectedProductForCart?.stock_quantity} {selectedProductForCart?.unit}
-                                        </Text>
-                                    </View>
+                                    {selectedProductForCart?.min_order_quantity > 1 && (
+                                        <>
+                                            <View style={styles.priceInfoDivider} />
+                                            <View style={styles.priceInfoItem}>
+                                                <Text style={styles.priceInfoLabel}>Мин. заказ</Text>
+                                                <Text style={styles.priceInfoValue}>
+                                                    {selectedProductForCart.min_order_quantity} {selectedProductForCart?.unit}
+                                                </Text>
+                                            </View>
+                                        </>
+                                    )}
                                 </View>
 
                                 <Text style={styles.qtyLabel}>Количество</Text>
                                 <View style={styles.qtyRow}>
                                     <TouchableOpacity
                                         style={styles.qtyBtn}
-                                        onPress={() => setCartQuantity(q => Math.max(1, parseInt(q || 1) - 1).toString())}
+                                        onPress={() => setCartQuantity(q => {
+                                            const min = selectedProductForCart?.min_order_quantity || 1;
+                                            return Math.max(min, parseInt(q || min) - 1).toString();
+                                        })}
                                     >
                                         <Icon name="minus" size={16} color={colors.primary} />
                                     </TouchableOpacity>

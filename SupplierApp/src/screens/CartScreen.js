@@ -99,12 +99,19 @@ export default function CartScreen({ onClose }) {
                     <Text style={styles.itemTotal}>
                         {(parseInt(item.product.price) * item.quantity).toLocaleString('ru-RU')} ₸
                     </Text>
+                    {item.product.min_order_quantity > 1 ? (
+                        <Text style={styles.moqHint}>Мин. заказ: {item.product.min_order_quantity} {item.product.unit}</Text>
+                    ) : null}
                 </View>
             </TouchableOpacity>
             <View style={styles.quantityControl}>
                 <TouchableOpacity
                     style={styles.qtyBtn}
-                    onPress={() => updateQuantity(supplierId, item.product.id, item.quantity - 1)}
+                    onPress={() => {
+                        const min = item.product.min_order_quantity || 1;
+                        const next = item.quantity - 1;
+                        updateQuantity(supplierId, item.product.id, next < min ? 0 : next);
+                    }}
                 >
                     <Icon name="minus" size={14} color={colors.primary} />
                 </TouchableOpacity>
@@ -113,10 +120,11 @@ export default function CartScreen({ onClose }) {
                     value={item.quantity.toString()}
                     onChangeText={(v) => {
                         const num = parseInt(v);
-                        if (!isNaN(num) && num > 0) {
+                        const min = item.product.min_order_quantity || 1;
+                        if (!isNaN(num) && num >= min) {
                             updateQuantity(supplierId, item.product.id, num);
                         } else if (v === '') {
-                            updateQuantity(supplierId, item.product.id, 1);
+                            updateQuantity(supplierId, item.product.id, min);
                         }
                     }}
                     keyboardType="numeric"
@@ -429,6 +437,7 @@ const createStyles = (colors) => StyleSheet.create({
     itemName: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 4 },
     itemPrice: { fontSize: 12, color: colors.textSecondary, marginBottom: 2 },
     itemTotal: { fontSize: 13, fontWeight: '700', color: colors.primary },
+    moqHint: { fontSize: 11, fontWeight: '600', color: colors.warning, marginTop: 2 },
     quantityControl: {
         flexDirection: 'row',
         alignItems: 'center',

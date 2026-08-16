@@ -13,7 +13,7 @@ import { AnimatedListItem } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
 import { cityLabel } from '../constants/cities';
 
-const emptyPerson = { username: '', phone: '', email: '', password: '', base_salary: '' };
+const emptyPerson = { name: '', username: '', phone: '', email: '', password: '', base_salary: '' };
 
 export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }) {
     const { colors } = useTheme();
@@ -26,12 +26,15 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
     const [person, setPerson] = useState(emptyPerson);
     const [saving, setSaving] = useState(false);
     const [selectedWorker, setSelectedWorker] = useState(null);
+    const [nameForm, setNameForm] = useState('');
+    const [savingName, setSavingName] = useState(false);
     const [payForm, setPayForm] = useState({ base_salary: '', bonus_sales_threshold: '', bonus_percent: '' });
     const [savingPay, setSavingPay] = useState(false);
     const [grantingBonus, setGrantingBonus] = useState(false);
 
     useEffect(() => {
         if (selectedWorker) {
+            setNameForm(selectedWorker.first_name || '');
             setPayForm({
                 base_salary: selectedWorker.base_salary || '',
                 bonus_sales_threshold: selectedWorker.bonus_sales_threshold || '',
@@ -39,6 +42,23 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
             });
         }
     }, [selectedWorker?.id]);
+
+    const saveName = async () => {
+        if (!nameForm.trim()) {
+            Alert.alert('Проверьте данные', 'Укажите имя сотрудника.');
+            return;
+        }
+        setSavingName(true);
+        try {
+            const { data } = await client.patch(`/api/auth/workers/${selectedWorker.id}/`, { name: nameForm.trim() });
+            setSelectedWorker(data);
+            setWorkers(current => current.map(w => w.id === data.id ? data : w));
+        } catch (e) {
+            Alert.alert('Ошибка', e.response?.data?.detail || 'Не удалось сохранить имя');
+        } finally {
+            setSavingName(false);
+        }
+    };
 
     const savePay = async () => {
         setSavingPay(true);
@@ -105,8 +125,8 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
     };
 
     const savePerson = async () => {
-        if (!person.username?.trim() || !person.phone.trim() || person.password?.length < 8) {
-            Alert.alert('Проверьте данные', 'Укажите имя, телефон и пароль не короче 8 символов.');
+        if (!person.name?.trim() || !person.username?.trim() || !person.phone.trim() || person.password?.length < 8) {
+            Alert.alert('Проверьте данные', 'Укажите имя, логин, телефон и пароль не короче 8 символов.');
             return;
         }
         setSaving(true);
@@ -114,7 +134,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
             await client.post('/api/auth/workers/', { ...person, city: activeCity });
             setPersonModal(false);
             await load();
-            Alert.alert('Готово', 'Учётная запись сотрудника создана.');
+            Alert.alert('Готово', 'Учётная запись создана. При первом входе сотрудник подтвердит свой номер телефона.');
         } catch (error) {
             Alert.alert('Ошибка', error.response?.data?.detail || 'Не удалось создать учётную запись');
         } finally {
@@ -178,7 +198,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                 ) : (
                     <View style={[styles.avatar, { backgroundColor: colors.purpleLight }]}><Icon name="user" size={18} color={colors.purple} /></View>
                 )}
-                <View style={{ flex: 1 }}><Text style={styles.name}>{item.username}</Text><Text style={styles.muted}>{item.phone}</Text></View>
+                <View style={{ flex: 1 }}><Text style={styles.name}>{item.first_name || item.username}</Text><Text style={styles.muted}>{item.phone}</Text></View>
                 <Icon name="chevronRight" size={18} color={colors.textTertiary} />
             </View>
             {item.email ? <Text style={styles.detail}>Email: {item.email}</Text> : null}
@@ -245,7 +265,8 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                 <ScrollView style={styles.modal} keyboardShouldPersistTaps="handled">
                     <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Новый сотрудник</Text>
-                    <InputField label="Имя / логин *" value={person.username} onChangeText={v => setPerson(p => ({ ...p, username: v }))} placeholder="Например, Айдана" autoCapitalize="words" />
+                    <InputField label="Имя *" value={person.name} onChangeText={v => setPerson(p => ({ ...p, name: v }))} placeholder="Например, Айдана" autoCapitalize="words" />
+                    <InputField label="Логин *" value={person.username} onChangeText={v => setPerson(p => ({ ...p, username: v }))} placeholder="Для входа в приложение" autoCapitalize="none" />
                     <InputField label="Телефон *" value={person.phone} onChangeText={v => setPerson(p => ({ ...p, phone: v }))} placeholder="+7 700 000 00 00" keyboardType="phone-pad" />
                     <InputField label="Email" value={person.email} onChangeText={v => setPerson(p => ({ ...p, email: v }))} placeholder="mail@example.com" keyboardType="email-address" />
                     <InputField label="Временный пароль *" value={person.password} onChangeText={v => setPerson(p => ({ ...p, password: v }))} placeholder="Не менее 8 символов" secureTextEntry />
@@ -271,7 +292,7 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                                     </View>
                                 )}
                                 <View>
-                                    <Text style={styles.modalTitle}>{selectedWorker?.username}</Text>
+                                    <Text style={styles.modalTitle}>{selectedWorker?.first_name || selectedWorker?.username}</Text>
                                     <Text style={styles.muted}>{selectedWorker?.phone || 'Телефон не указан'}</Text>
                                 </View>
                             </View>
@@ -279,6 +300,16 @@ export default function WorkersScreen({ onBack, activeCity, serviceCities = [] }
                                 <Icon name="x" size={22} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
+
+                        <Text style={styles.sectionTitle}>Имя сотрудника</Text>
+                        <InputField
+                            label="Имя, отображаемое в списке"
+                            value={nameForm}
+                            onChangeText={setNameForm}
+                            placeholder="Например, Айдана"
+                            autoCapitalize="words"
+                        />
+                        <Button label="Сохранить имя" onPress={saveName} loading={savingName} variant="secondary" style={{ marginBottom: spacing.lg }} />
 
                         <Text style={styles.sectionTitle}>Оплата и бонусы</Text>
                         <InputField

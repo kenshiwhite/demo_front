@@ -232,6 +232,7 @@ export default function SupplierHomeScreen() {
                 description: product.description || '',
                 price: product.price.toString(),
                 cost_price: product.cost_price != null ? product.cost_price.toString() : '',
+                min_order_quantity: product.min_order_quantity ? product.min_order_quantity.toString() : '1',
                 unit: product.unit,
                 stock_quantity: product.stock_quantity.toString(),
                 is_available: product.is_available,
@@ -241,7 +242,7 @@ export default function SupplierHomeScreen() {
         } else {
             setEditingProduct(null);
             setProductForm({
-                name: '', description: '', price: '', cost_price: '',
+                name: '', description: '', price: '', cost_price: '', min_order_quantity: '1',
                 unit: '', stock_quantity: '', is_available: true, category: '',
                 city: activeCity,
             });
@@ -296,6 +297,7 @@ export default function SupplierHomeScreen() {
             }
             formData.append('unit', productForm.unit.trim());
             formData.append('stock_quantity', parseInt(productForm.stock_quantity) || 0);
+            formData.append('min_order_quantity', parseInt(productForm.min_order_quantity) || 1);
             formData.append('is_available', productForm.is_available);
             formData.append('category', productForm.category || 'other');
             formData.append('city', productForm.city || activeCity);
@@ -444,7 +446,7 @@ export default function SupplierHomeScreen() {
     };
 
     const renderProduct = ({ item }) => {
-        const isLowStock = item.stock_quantity > 0 && item.stock_quantity <= 10;
+        const isLowStock = item.stock_quantity > 0 && item.stock_quantity <= (user?.low_stock_threshold ?? 10);
         const isOutOfStock = item.stock_quantity === 0;
 
         return (
@@ -524,7 +526,7 @@ export default function SupplierHomeScreen() {
     };
 
     const renderProductRow = ({ item }) => {
-        const isLowStock = item.stock_quantity > 0 && item.stock_quantity <= 10;
+        const isLowStock = item.stock_quantity > 0 && item.stock_quantity <= (user?.low_stock_threshold ?? 10);
         const isOutOfStock = item.stock_quantity === 0;
 
         return (
@@ -982,6 +984,14 @@ export default function SupplierHomeScreen() {
                                     value={productForm.stock_quantity}
                                     onChangeText={(v) => setProductForm(p => ({ ...p, stock_quantity: v }))}
                                     placeholder="0"
+                                    keyboardType="numeric"
+                                />
+
+                                <InputField
+                                    label="Минимальный заказ"
+                                    value={productForm.min_order_quantity}
+                                    onChangeText={(v) => setProductForm(p => ({ ...p, min_order_quantity: v }))}
+                                    placeholder="1"
                                     keyboardType="numeric"
                                 />
 
