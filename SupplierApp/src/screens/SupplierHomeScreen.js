@@ -7,7 +7,7 @@ import {
     Modal, TextInput, ScrollView, Image,
     KeyboardAvoidingView, Platform,
     TouchableWithoutFeedback, Keyboard,
-    Animated
+    Animated, Dimensions
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
@@ -27,7 +27,7 @@ import * as ImagePicker from 'expo-image-picker';
 import CalendarScreen from './CalendarScreen';
 import ClientsScreen from './ClientsScreen';
 import WorkersScreen from './WorkersScreen';
-import { ScreenOverlay, CrossFade } from '../components/AnimatedPrimitives';
+import { ScreenOverlay } from '../components/AnimatedPrimitives';
 import BottomSheet from '../components/BottomSheet';
 import CityPickerSheet from '../components/CityPickerSheet';
 import { cityLabel as lookupCityLabel } from '../constants/cities';
@@ -80,6 +80,22 @@ export default function SupplierHomeScreen() {
     const [activeCity, setActiveCity] = useState(serviceCities[0] || '');
     const [showActiveCityPicker, setShowActiveCityPicker] = useState(false);
     const [productViewMode, setProductViewMode] = useState('cards'); // 'cards' | 'rows'
+    const screenWidth = Dimensions.get('window').width;
+    const pagerRef = useRef(null);
+    const PAGES = user?.role === 'supplier' ? ['home', 'requests', 'products', 'finance'] : ['home', 'requests', 'products'];
+
+    const goToPage = (key) => {
+        const index = PAGES.indexOf(key);
+        if (index === -1) return;
+        setView(key);
+        pagerRef.current?.scrollTo({ x: index * screenWidth, animated: true });
+    };
+
+    const handlePagerScrollEnd = (e) => {
+        const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+        const key = PAGES[index];
+        if (key && key !== view) setView(key);
+    };
     const [showProductCityPicker, setShowProductCityPicker] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -99,9 +115,9 @@ export default function SupplierHomeScreen() {
     };
 
     useEffect(() => {
-        if (view === 'requests') loadRequests();
-        else if (view === 'products') loadProducts();
-    }, [view, activeCity]);
+        loadRequests();
+        loadProducts();
+    }, [activeCity]);
 
     useEffect(() => {
         loadUnreadCount();
@@ -621,21 +637,21 @@ export default function SupplierHomeScreen() {
                 <View style={styles.tabs}>
                     <TouchableOpacity
                         style={[styles.tab, view === 'home' && styles.tabActive]}
-                        onPress={() => setView('home')}
+                        onPress={() => goToPage('home')}
                     >
                         <Icon name="store" size={16} color={view === 'home' ? colors.primary : colors.textTertiary} />
                         <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>Главная</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tab, view === 'requests' && styles.tabActive]}
-                        onPress={() => setView('requests')}
+                        onPress={() => goToPage('requests')}
                     >
                         <Icon name="package" size={16} color={view === 'requests' ? colors.primary : colors.textTertiary} />
                         <Text style={[styles.tabText, view === 'requests' && styles.tabTextActive]}>Заявки</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tab, view === 'products' && styles.tabActive]}
-                        onPress={() => setView('products')}
+                        onPress={() => goToPage('products')}
                     >
                         <Icon name="layers" size={16} color={view === 'products' ? colors.primary : colors.textTertiary} />
                         <Text style={[styles.tabText, view === 'products' && styles.tabTextActive]}>Товары</Text>
@@ -643,7 +659,7 @@ export default function SupplierHomeScreen() {
                     {user?.role === 'supplier' && (
                         <TouchableOpacity
                             style={[styles.tab, view === 'finance' && styles.tabActive]}
-                            onPress={() => setView('finance')}
+                            onPress={() => goToPage('finance')}
                         >
                             <Icon name="trending_up" size={16} color={view === 'finance' ? colors.primary : colors.textTertiary} />
                             <Text style={[styles.tabText, view === 'finance' && styles.tabTextActive]}>Финансы</Text>
@@ -653,97 +669,123 @@ export default function SupplierHomeScreen() {
             )}
 
             {/* Request filter */}
-            {view === 'requests' && (
-                <View style={styles.filterBar}>
-                    {[
-                        { key: 'active', label: 'Активные' },
-                        { key: 'all', label: 'Все' },
-                        { key: 'history', label: 'История' },
-                    ].map(f => (
-                        <TouchableOpacity
-                            key={f.key}
-                            style={[styles.filterBtn, requestFilter === f.key && styles.filterBtnActive]}
-                            onPress={() => setRequestFilter(f.key)}
-                        >
-                            <Text style={[styles.filterBtnText, requestFilter === f.key && styles.filterBtnTextActive]}>
-                                {f.label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
+            {view !== 'clients' && view !== 'workers' ? (
+                <ScrollView
+                    ref={pagerRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={handlePagerScrollEnd}
+                    scrollEventThrottle={16}
+                    style={{ flex: 1 }}
+                >
+                    <View style={{ width: screenWidth, flex: 1 }}>
+                        <SupplierHomeTab
+                            onRequestPress={(request) => setCalendarSelectedRequest(request)}
+                            activeCity={activeCity}
+                            onOpenRepStats={() => setShowRepStats(true)}
+                            onOpenProducts={() => goToPage('products')}
+                        />
+                    </View>
 
-            {/* Product view mode toggle */}
-            {view === 'products' && (
-                <View style={styles.filterBar}>
-                    <View style={{ flex: 1 }} />
-                    <TouchableOpacity
-                        style={[styles.viewModeBtn, productViewMode === 'cards' && styles.viewModeBtnActive]}
-                        onPress={() => setProductViewMode('cards')}
-                    >
-                        <Icon name="layers" size={16} color={productViewMode === 'cards' ? colors.primary : colors.textTertiary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.viewModeBtn, productViewMode === 'rows' && styles.viewModeBtnActive]}
-                        onPress={() => setProductViewMode('rows')}
-                    >
-                        <Icon name="list" size={16} color={productViewMode === 'rows' ? colors.primary : colors.textTertiary} />
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            <CrossFade activeKey={loading ? 'loading' : view} style={{ flex: 1 }}>
-            {view === 'clients' ? (
-                <ClientsScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
-            ) : view === 'workers' ? (
-                <WorkersScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
-            ) : view === 'finance' ? (
-                <FinanceScreen />
-            ) : view === 'home' ? (
-                <SupplierHomeTab
-                    onRequestPress={(request) => setCalendarSelectedRequest(request)}
-                    activeCity={activeCity}
-                    onOpenRepStats={() => setShowRepStats(true)}
-                    onOpenProducts={() => setView('products')}
-                />
-            ) : loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-            ) : (
-                <FlatList
-                    key={view === 'requests' ? 'requests-list' : `products-${productViewMode}`}
-                    data={view === 'requests' ? filteredRequests : products}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={view === 'requests' ? renderRequest : productViewMode === 'rows' ? renderProductRow : renderProduct}
-                    contentContainerStyle={styles.list}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <View style={styles.emptyIconBox}>
-                                <Icon
-                                    name={view === 'requests' ? 'package' : 'layers'}
-                                    size={32}
-                                    color={colors.textTertiary}
-                                />
-                            </View>
-                            <Text style={styles.emptyTitle}>
-                                {view === 'requests'
-                                    ? requestFilter === 'history' ? 'История пуста'
-                                    : requestFilter === 'active' ? 'Нет активных заявок'
-                                    : 'Заявок пока нет'
-                                    : 'Товаров пока нет'}
-                            </Text>
-                            <Text style={styles.emptySubtitle}>
-                                {view === 'requests'
-                                    ? 'Заявки от клиентов появятся здесь'
-                                    : 'Добавьте первый товар кнопкой ниже'}
-                            </Text>
+                    <View style={{ width: screenWidth, flex: 1 }}>
+                        <View style={styles.filterBar}>
+                            {[
+                                { key: 'active', label: 'Активные' },
+                                { key: 'all', label: 'Все' },
+                                { key: 'history', label: 'История' },
+                            ].map(f => (
+                                <TouchableOpacity
+                                    key={f.key}
+                                    style={[styles.filterBtn, requestFilter === f.key && styles.filterBtnActive]}
+                                    onPress={() => setRequestFilter(f.key)}
+                                >
+                                    <Text style={[styles.filterBtnText, requestFilter === f.key && styles.filterBtnTextActive]}>
+                                        {f.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-                    }
-                />
+                        {loading && !hasLoadedRequestsOnce.current ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={colors.primary} />
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={filteredRequests}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={renderRequest}
+                                contentContainerStyle={styles.list}
+                                showsVerticalScrollIndicator={false}
+                                ListEmptyComponent={
+                                    <View style={styles.emptyState}>
+                                        <View style={styles.emptyIconBox}>
+                                            <Icon name="package" size={32} color={colors.textTertiary} />
+                                        </View>
+                                        <Text style={styles.emptyTitle}>
+                                            {requestFilter === 'history' ? 'История пуста'
+                                                : requestFilter === 'active' ? 'Нет активных заявок'
+                                                : 'Заявок пока нет'}
+                                        </Text>
+                                        <Text style={styles.emptySubtitle}>Заявки от клиентов появятся здесь</Text>
+                                    </View>
+                                }
+                            />
+                        )}
+                    </View>
+
+                    <View style={{ width: screenWidth, flex: 1 }}>
+                        <View style={styles.filterBar}>
+                            <View style={{ flex: 1 }} />
+                            <TouchableOpacity
+                                style={[styles.viewModeBtn, productViewMode === 'cards' && styles.viewModeBtnActive]}
+                                onPress={() => setProductViewMode('cards')}
+                            >
+                                <Icon name="layers" size={16} color={productViewMode === 'cards' ? colors.primary : colors.textTertiary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.viewModeBtn, productViewMode === 'rows' && styles.viewModeBtnActive]}
+                                onPress={() => setProductViewMode('rows')}
+                            >
+                                <Icon name="list" size={16} color={productViewMode === 'rows' ? colors.primary : colors.textTertiary} />
+                            </TouchableOpacity>
+                        </View>
+                        {loading && !hasLoadedProductsOnce.current ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={colors.primary} />
+                            </View>
+                        ) : (
+                            <FlatList
+                                key={`products-${productViewMode}`}
+                                data={products}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={productViewMode === 'rows' ? renderProductRow : renderProduct}
+                                contentContainerStyle={styles.list}
+                                showsVerticalScrollIndicator={false}
+                                ListEmptyComponent={
+                                    <View style={styles.emptyState}>
+                                        <View style={styles.emptyIconBox}>
+                                            <Icon name="layers" size={32} color={colors.textTertiary} />
+                                        </View>
+                                        <Text style={styles.emptyTitle}>Товаров пока нет</Text>
+                                        <Text style={styles.emptySubtitle}>Добавьте первый товар кнопкой ниже</Text>
+                                    </View>
+                                }
+                            />
+                        )}
+                    </View>
+
+                    {user?.role === 'supplier' && (
+                        <View style={{ width: screenWidth, flex: 1 }}>
+                            <FinanceScreen />
+                        </View>
+                    )}
+                </ScrollView>
+            ) : view === 'clients' ? (
+                <ClientsScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
+            ) : (
+                <WorkersScreen onBack={() => setView('home')} activeCity={activeCity} serviceCities={serviceCities} />
             )}
-            </CrossFade>
 
             {/* FAB */}
             {view === 'products' && user?.role === 'supplier' && (

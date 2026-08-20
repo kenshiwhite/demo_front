@@ -52,19 +52,25 @@ export default function FinanceScreen() {
     const [showWorkerPicker, setShowWorkerPicker] = useState(false);
     const [savingBonus, setSavingBonus] = useState(false);
 
+    const [periodBonuses, setPeriodBonuses] = useState([]);
+    const [salariesExpanded, setSalariesExpanded] = useState(false);
+    const [bonusesExpanded, setBonusesExpanded] = useState(false);
+
     const hasLoadedOnce = useRef(false);
 
     const load = useCallback(async () => {
         if (!hasLoadedOnce.current) setLoading(true);
         try {
-            const [summaryRes, expensesRes, workersRes] = await Promise.all([
+            const [summaryRes, expensesRes, workersRes, bonusesRes] = await Promise.all([
                 client.get('/api/finance/summary/', { params: { period, include_bonuses: includeBonuses } }),
                 client.get('/api/finance/expenses/', { params: { period } }),
                 client.get('/api/auth/workers/'),
+                client.get('/api/finance/bonuses/', { params: { period } }),
             ]);
             setSummary(summaryRes.data);
             setExpenses(expensesRes.data);
             setWorkers(workersRes.data.results || workersRes.data);
+            setPeriodBonuses(bonusesRes.data);
         } catch (e) {
             Alert.alert('Ошибка', 'Не удалось загрузить финансовые данные');
         } finally {
@@ -76,6 +82,10 @@ export default function FinanceScreen() {
     useEffect(() => { load(); }, [load]);
 
     const money = (val) => `${parseInt(val || 0).toLocaleString('ru-RU')} ₸`;
+    const daysInMonth = useMemo(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    }, []);
 
     const saveExpense = async () => {
         const amount = parseFloat(expenseForm.amount);
@@ -185,24 +195,72 @@ export default function FinanceScreen() {
                             <Text style={styles.breakdownLabel}>Себестоимость товаров</Text>
                             <Text style={styles.breakdownValue}>{money(summary?.cost_of_goods)}</Text>
                         </View>
-                        <View style={styles.breakdownRow}>
-                            <Text style={styles.breakdownLabel}>
-                                Зарплаты{period === 'day' ? ' (за день)' : ''} · {summary?.worker_count || 0} сотр.
-                            </Text>
+                        <TouchableOpacity
+                            style={styles.breakdownRow}
+                            onPress={() => setSalariesExpanded(v => !v)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={styles.expandableLabelRow}>
+                                <Icon name="chevronRight" size={12} color={colors.textTertiary} style={{ transform: [{ rotate: salariesExpanded ? '90deg' : '0deg' }] }} />
+                                <Text style={styles.breakdownLabel}>
+                                    Зарплаты{period === 'day' ? ' (за день)' : ''} · {summary?.worker_count || 0} сотр.
+                                </Text>
+                            </View>
                             <Text style={styles.breakdownValue}>{money(summary?.salary_expense)}</Text>
-                        </View>
-                        <View style={styles.breakdownRow}>
+                        </TouchableOpacity>
+                        {salariesExpanded && (
+                            <View style={styles.expandedList}>
+                                {workers.filter(w => w.base_salary).map(w => (
+                                    <View key={w.id} style={styles.expandedRow}>
+                                        <Text style={styles.expandedName}>{w.first_name || w.username}</Text>
+                                        <Text style={styles.expandedValue}>
+                                            {money(period === 'day' ? w.base_salary / daysInMonth : w.base_salary)}
+                                        </Text>
+                                    </View>
+                                ))}
+                                {workers.filter(w => w.base_salary).length === 0 && (
+                                    <Text style={styles.hint}>Ни у одного сотрудника не указан оклад.</Text>
+                                )}
+                            </View>
+                        )}
+
+                        <TouchableOpacity
+                            style={styles.breakdownRow}
+                            onPress={() => setBonusesExpanded(v => !v)}
+                            activeOpacity={0.7}
+                        >
                             <View style={styles.bonusToggleRow}>
-                                <Text style={styles.breakdownLabel}>Бонусы сотрудникам</Text>
+                                <View style={styles.expandableLabelRow}>
+                                    <Icon name="chevronRight" size={12} color={colors.textTertiary} style={{ transform: [{ rotate: bonusesExpanded ? '90deg' : '0deg' }] }} />
+                                    <Text style={styles.breakdownLabel}>Бонусы сотрудникам</Text>
+                                    <Text style={styles.breakdownValue}>{money(summary?.bonuses_total)}</Text>
+
+                                </View>
                                 <Switch
                                     value={includeBonuses}
                                     onValueChange={setIncludeBonuses}
                                     trackColor={{ false: colors.border, true: colors.primaryLight }}
                                     thumbColor={includeBonuses ? colors.primary : '#fff'}
+                                    
                                 />
                             </View>
-                            <Text style={styles.breakdownValue}>{money(summary?.bonuses_total)}</Text>
-                        </View>
+                        </TouchableOpacity>
+                        {bonusesExpanded && (
+                            <View style={styles.expandedList}>
+                                {periodBonuses.map(b => (
+                                    <View key={b.id} style={styles.expandedRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.expandedName}>{b.worker_name}</Text>
+                                            {b.reason ? <Text style={styles.expandedSub} numberOfLines={1}>{b.reason}</Text> : null}
+                                        </View>
+                                        <Text style={styles.expandedValue}>{money(b.amount)}</Text>
+                                    </View>
+                                ))}
+                                {periodBonuses.length === 0 && (
+                                    <Text style={styles.hint}>Бонусов за этот период нет.</Text>
+                                )}
+                            </View>
+                        )}
                         <View style={styles.breakdownRow}>
                             <Text style={styles.breakdownLabel}>Прочие расходы</Text>
                             <Text style={styles.breakdownValue}>{money(summary?.manual_expenses_total)}</Text>
@@ -486,6 +544,22 @@ const createStyles = (colors) => StyleSheet.create({
         borderBottomWidth: 0.5, borderBottomColor: colors.borderLight,
     },
     bonusToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    expandableLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+    expandedList: {
+        backgroundColor: colors.background,
+        borderRadius: radius.md,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+    },
+    expandedRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: spacing.xs,
+    },
+    expandedName: { fontSize: 13, fontWeight: '600', color: colors.text },
+    expandedSub: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
+    expandedValue: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
     breakdownLabel: { fontSize: 13, color: colors.textSecondary, flexShrink: 1 },
     breakdownValue: { fontSize: 14, fontWeight: '700', color: colors.text },
     breakdownTotal: { borderBottomWidth: 0, marginTop: 4, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
